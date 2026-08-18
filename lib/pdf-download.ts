@@ -10,7 +10,7 @@ export function downloadRequestPdf(request: MaterialRequest) {
   let body = ""
   body += rect(0, 690, 612, 102, "0.06 0.06 0.06")
   body += rect(0, 680, 612, 10, "1 0.31 0")
-  body += text("SOLARFLOW", 48, 750, 22, "1 0.31 0")
+  body += text("TESOCOL", 48, 750, 22, "1 0.31 0")
   body += text("Tecnologia Solar de Colombia", 48, 726, 11, "1 1 1")
   body += text("VALE DE SOLICITUD DE MATERIALES", 48, 640, 19)
   body += text(`Proyecto: ${request.project}`, 48, 615, 11, "0.35 0.35 0.35")
@@ -40,7 +40,7 @@ export function downloadRequestPdf(request: MaterialRequest) {
   body += line(48, signatureY + 26, 190, signatureY + 26, "0.25 0.25 0.25")
   body += line(226, signatureY + 26, 368, signatureY + 26, "0.25 0.25 0.25")
   body += line(404, signatureY + 26, 556, signatureY + 26, "0.25 0.25 0.25")
-  body += text("Documento generado por SolarFlow", 48, 42, 8, "0.5 0.5 0.5")
+  body += text("Documento generado por TESOCOL", 48, 42, 8, "0.5 0.5 0.5")
   const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>", `<< /Length ${body.length} >>\nstream\n${body}\nendstream`]
   let pdf = "%PDF-1.4\n"; const offsets = [0]
   objects.forEach((object, index) => { offsets.push(pdf.length); pdf += `${index + 1} 0 obj\n${object}\nendobj\n` })

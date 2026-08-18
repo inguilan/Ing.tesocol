@@ -7,7 +7,7 @@ const divider = (x1: number, y1: number, x2: number, y2: number) => `0.84 0.84 0
 
 export function downloadExecutiveReport(projects: Project[], requests: MaterialRequest[], reports: SiteMaterialReport[]) {
   let body = box(0, 690, 612, 102, "0.06 0.06 0.06") + box(0, 680, 612, 10, "1 0.31 0")
-  body += txt("SOLARFLOW", 48, 750, 22, "1 0.31 0") + txt("Tecnologia Solar de Colombia", 48, 726, 11, "1 1 1")
+  body += txt("TESOCOL", 48, 750, 22, "1 0.31 0") + txt("Tecnologia Solar de Colombia", 48, 726, 11, "1 1 1")
   body += txt("REPORTE EJECUTIVO DE OBRAS", 48, 640, 19) + txt(`Generado: ${new Date().toLocaleDateString("es-CO")}`, 48, 616, 10, "0.4 0.4 0.4")
   body += box(48, 557, 155, 42, "0.96 0.96 0.96") + box(228, 557, 155, 42, "0.96 0.96 0.96") + box(408, 557, 155, 42, "0.96 0.96 0.96")
   body += txt("OBRAS ACTIVAS", 60, 580, 8, "0.4 0.4 0.4") + txt(String(projects.filter(p => p.status === "in_progress").length), 60, 564, 17, "1 0.31 0")

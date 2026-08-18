@@ -59,7 +59,7 @@ export function AppSidebar() {
                 <Sun className="size-5" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold">SolarFlow</span>
+                <span className="font-semibold">TESOCOL</span>
                 <span className="text-xs text-muted-foreground">
                   Gestión de materiales
                 </span>

@@ -13,7 +13,7 @@ export default function LoginPage() {
   const router = useRouter()
   const { loginAsRole } = useStore()
   const [role, setRole] = React.useState<"engineer" | "technician">("engineer")
-  const [email, setEmail] = React.useState("m.chen@solarflow.com")
+  const [email, setEmail] = React.useState("m.chen@TESOCOL.com")
   const [password, setPassword] = React.useState("123456")
 
   const handleLogin = (e: React.FormEvent) => {
@@ -37,7 +37,7 @@ export default function LoginPage() {
           <div className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl shadow-primary/25">
             <Sun className="size-8 animate-pulse" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight">SolarFlow</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">TESOCOL</h1>
           <p className="text-sm text-muted-foreground font-medium">
             Gestión Operativa de Proyectos y Materiales Solares
           </p>
@@ -55,7 +55,7 @@ export default function LoginPage() {
             <Tabs defaultValue="engineer" value={role} onValueChange={(v) => {
               const r = v as "engineer" | "technician"
               setRole(r)
-              setEmail(r === "engineer" ? "m.chen@solarflow.com" : "c.ruiz@solarflow.com")
+              setEmail(r === "engineer" ? "m.chen@TESOCOL.com" : "c.ruiz@TESOCOL.com")
             }} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-3">
                 <TabsTrigger value="engineer" className="gap-2 font-semibold">

@@ -53,7 +53,7 @@ export function AppHeader() {
   const segments = pathname.split("/").filter(Boolean)
 
   const crumbs = [
-    { label: "SolarFlow", href: "/" },
+    { label: "TESOCOL", href: "/" },
     ...segments.map((segment, index) => ({
       label:
         labelMap[segment] ??

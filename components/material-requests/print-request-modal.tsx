@@ -60,7 +60,7 @@ export function PrintRequestModal({
                 <Sun className="size-7" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">SolarFlow</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">TESOCOL</h1>
                 <p className="text-xs text-muted-foreground">Logística & Control de Materiales Solares</p>
                 <p className="text-[11px] text-muted-foreground">Documento Oficial de Requisición de Bodega</p>
               </div>
@@ -165,7 +165,7 @@ export function PrintRequestModal({
           </div>
 
           <div className="text-center text-[10px] text-muted-foreground pt-4">
-            Documento impreso automáticamente desde SolarFlow Enterprise System • Trazabilidad de Materiales Solares
+            Documento impreso automáticamente desde TESOCOL • Trazabilidad de Materiales Solares
           </div>
         </div>
       </DialogContent>

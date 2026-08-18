@@ -16,7 +16,7 @@ export const sampleMaterials: ProjectMaterial[] = [
 export const defaultEngineerUser: User = {
   id: "usr-eng-1",
   name: "Ing. Maya Chen (Ingeniero Principal)",
-  email: "m.chen@solarflow.com",
+  email: "m.chen@TESOCOL.com",
   role: "engineer",
   initials: "MC"
 }
@@ -24,7 +24,7 @@ export const defaultEngineerUser: User = {
 export const defaultTechnicianUser: User = {
   id: "usr-tech-1",
   name: "Carlos Ruiz (Técnico Obra)",
-  email: "c.ruiz@solarflow.com",
+  email: "c.ruiz@TESOCOL.com",
   role: "technician",
   initials: "CR"
 }
@@ -83,28 +83,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Load / Save localStorage state
   React.useEffect(() => {
     try {
-      const savedUser = localStorage.getItem("solarflow_v2_user")
+      const savedUser = localStorage.getItem("TESOCOL_v2_user")
       if (savedUser) {
         setCurrentUser(JSON.parse(savedUser))
         setIsLoggedIn(true)
       }
-      const savedAuth = localStorage.getItem("solarflow_v2_auth")
+      const savedAuth = localStorage.getItem("TESOCOL_v2_auth")
       if (savedAuth) {
         setIsLoggedIn(JSON.parse(savedAuth))
       }
-      const savedProjects = localStorage.getItem("solarflow_v2_projects")
+      const savedProjects = localStorage.getItem("TESOCOL_v2_projects")
       if (savedProjects) {
         setProjectsList(JSON.parse(savedProjects))
       }
-      const savedRequests = localStorage.getItem("solarflow_v2_requests")
+      const savedRequests = localStorage.getItem("TESOCOL_v2_requests")
       if (savedRequests) {
         setRequestsList(JSON.parse(savedRequests))
       }
-      const savedDeliveries = localStorage.getItem("solarflow_v2_deliveries")
+      const savedDeliveries = localStorage.getItem("TESOCOL_v2_deliveries")
       if (savedDeliveries) setDeliveriesList(JSON.parse(savedDeliveries))
-      const savedReturns = localStorage.getItem("solarflow_v2_returns")
+      const savedReturns = localStorage.getItem("TESOCOL_v2_returns")
       if (savedReturns) setReturnsList(JSON.parse(savedReturns))
-      const savedReports = localStorage.getItem("solarflow_v2_site_reports")
+      const savedReports = localStorage.getItem("TESOCOL_v2_site_reports")
       if (savedReports) setSiteReportsList(JSON.parse(savedReports))
     } catch (e) {
       console.error("Failed loading local storage", e)
@@ -113,13 +113,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     try {
-      localStorage.setItem("solarflow_v2_user", JSON.stringify(currentUser))
-      localStorage.setItem("solarflow_v2_auth", JSON.stringify(isLoggedIn))
-      localStorage.setItem("solarflow_v2_projects", JSON.stringify(projectsList))
-      localStorage.setItem("solarflow_v2_requests", JSON.stringify(requestsList))
-      localStorage.setItem("solarflow_v2_deliveries", JSON.stringify(deliveriesList))
-      localStorage.setItem("solarflow_v2_returns", JSON.stringify(returnsList))
-      localStorage.setItem("solarflow_v2_site_reports", JSON.stringify(siteReportsList))
+      localStorage.setItem("TESOCOL_v2_user", JSON.stringify(currentUser))
+      localStorage.setItem("TESOCOL_v2_auth", JSON.stringify(isLoggedIn))
+      localStorage.setItem("TESOCOL_v2_projects", JSON.stringify(projectsList))
+      localStorage.setItem("TESOCOL_v2_requests", JSON.stringify(requestsList))
+      localStorage.setItem("TESOCOL_v2_deliveries", JSON.stringify(deliveriesList))
+      localStorage.setItem("TESOCOL_v2_returns", JSON.stringify(returnsList))
+      localStorage.setItem("TESOCOL_v2_site_reports", JSON.stringify(siteReportsList))
     } catch (e) {
       console.error("Failed saving local storage", e)
     }
