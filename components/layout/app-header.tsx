@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bell, LogOut, Search, UserCheck, Shield } from "lucide-react"
+import { Bell, LogOut, Search, Shield } from "lucide-react"
 import * as React from "react"
 
 import {
@@ -20,7 +20,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -31,26 +30,67 @@ import { labelMap } from "./nav-config"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/lib/store-context"
 
-const notifications = [
-  {
-    title: "La solicitud SOL-5821 requiere aprobación",
-    time: "hace 12 min",
-  },
-  {
-    title: "La entrega ENT-3298 está retrasada",
-    time: "hace 1 hora",
-  },
-  {
-    title: "Devolución DEV-2210 agregada para revisión",
-    time: "hace 5 horas",
-  },
-]
-
 export function AppHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { currentUser, loginAsRole, logout } = useStore()
+  const { currentUser, logout, projects: allProjects, materialRequests: allRequests, deliveries: allDeliveries, returns: allReturns } = useStore()
+  const [searchQuery, setSearchQuery] = React.useState("")
   const segments = pathname.split("/").filter(Boolean)
+  const projects = currentUser.role === "engineer" ? allProjects : allProjects.filter((project) => project.technicianId === currentUser.id)
+  const projectMatches = (projectId?: string, projectName?: string) => currentUser.role === "engineer" || projects.some((project) => project.id === projectId || project.name === projectName)
+  const materialRequests = allRequests.filter((request) => projectMatches(request.projectId, request.project))
+  const deliveries = allDeliveries.filter((delivery) => projectMatches(delivery.projectId, delivery.project))
+  const returns = allReturns.filter((returnRecord) => projectMatches(returnRecord.projectId, returnRecord.project))
+
+  const searchResults = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return []
+
+    return [
+      ...projects.map((project) => ({
+        id: project.id,
+        label: project.name,
+        detail: `${project.id} · ${project.client}`,
+        href: `/projects/${project.id}`,
+      })),
+      ...materialRequests.map((request) => ({
+        id: request.reference,
+        label: request.reference,
+        detail: `${request.project} · Solicitud de materiales`,
+        href: "/material-requests",
+      })),
+      ...deliveries.map((delivery) => ({
+        id: delivery.reference,
+        label: delivery.reference,
+        detail: `${delivery.project} · Entrega`,
+        href: "/deliveries",
+      })),
+      ...returns.map((returnRecord) => ({
+        id: returnRecord.reference,
+        label: returnRecord.reference,
+        detail: `${returnRecord.project} · Devolución`,
+        href: "/returns",
+      })),
+    ].filter((result) => `${result.id} ${result.label} ${result.detail}`.toLowerCase().includes(query)).slice(0, 6)
+  }, [deliveries, materialRequests, projects, returns, searchQuery])
+
+  const notifications = [
+    ...materialRequests.filter((request) => request.status === "pending").map((request) => ({
+      title: `${request.reference} requiere aprobación`,
+      time: `Solicitud para ${request.project}`,
+      href: "/material-requests",
+    })),
+    ...deliveries.filter((delivery) => delivery.status === "delayed").map((delivery) => ({
+      title: `${delivery.reference} está retrasada`,
+      time: `Entrega para ${delivery.project}`,
+      href: "/deliveries",
+    })),
+    ...returns.filter((returnRecord) => returnRecord.status === "in_review").map((returnRecord) => ({
+      title: `${returnRecord.reference} está en revisión`,
+      time: `Devolución de ${returnRecord.project}`,
+      href: "/returns",
+    })),
+  ].slice(0, 8)
 
   const crumbs = [
     { label: "TESOCOL", href: "/" },
@@ -102,7 +142,7 @@ export function AppHeader() {
           className="hidden sm:inline-flex gap-1.5 py-1 px-2.5 text-xs font-semibold uppercase tracking-wider"
         >
           <Shield className="size-3.5" />
-          {currentUser.role === "engineer" ? "Ingeniero" : "Técnico"}
+          {currentUser.role === "superadmin" ? "Superusuario" : currentUser.role === "engineer" ? "Ingeniero" : "Técnico"}
         </Badge>
 
         <div className="relative hidden md:block">
@@ -110,8 +150,34 @@ export function AppHeader() {
           <input
             type="search"
             placeholder="Buscar proyectos, materiales..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && searchResults[0]) {
+                router.push(searchResults[0].href)
+                setSearchQuery("")
+              }
+            }}
             className="h-9 w-56 rounded-lg border border-input bg-card pr-3 pl-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 lg:w-72"
           />
+          {searchResults.length > 0 && (
+            <div className="absolute top-11 right-0 left-0 z-50 overflow-hidden rounded-lg border bg-popover p-1 shadow-lg">
+              {searchResults.map((result) => (
+                <button
+                  key={result.id}
+                  type="button"
+                  className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left hover:bg-muted"
+                  onClick={() => {
+                    router.push(result.href)
+                    setSearchQuery("")
+                  }}
+                >
+                  <span className="text-sm font-medium">{result.label}</span>
+                  <span className="text-xs text-muted-foreground">{result.detail}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <DropdownMenu>
@@ -121,7 +187,7 @@ export function AppHeader() {
             }
           >
             <Bell className="size-4" />
-            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+            {notifications.length > 0 && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />}
             <span className="sr-only">Notificaciones</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
@@ -130,8 +196,11 @@ export function AppHeader() {
               <Badge variant="secondary">{notifications.length} nuevas</Badge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {notifications.length === 0 && (
+              <DropdownMenuItem disabled>No hay alertas pendientes</DropdownMenuItem>
+            )}
             {notifications.map((n) => (
-              <DropdownMenuItem key={n.title} className="flex-col items-start gap-0.5 py-2">
+              <DropdownMenuItem key={n.title} className="flex-col items-start gap-0.5 py-2" onClick={() => router.push(n.href)}>
                 <span className="text-sm font-medium">{n.title}</span>
                 <span className="text-xs text-muted-foreground">{n.time}</span>
               </DropdownMenuItem>
@@ -153,7 +222,7 @@ export function AppHeader() {
                 </Avatar>
                 <div className="flex flex-col text-left text-xs hidden sm:flex">
                   <span className="font-semibold leading-tight">{currentUser.name}</span>
-                  <span className="text-[10px] text-muted-foreground capitalize">{currentUser.role === 'engineer' ? 'Ingeniero' : 'Técnico'}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize">{currentUser.role === 'superadmin' ? 'Superusuario' : currentUser.role === 'engineer' ? 'Ingeniero' : 'Técnico'}</span>
                 </div>
               </Button>
             }
@@ -165,18 +234,6 @@ export function AppHeader() {
                 <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-[11px] text-muted-foreground uppercase tracking-wider">Cambiar Perfil Rápido</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => loginAsRole("engineer")}>
-                <UserCheck className="mr-2 size-4 text-blue-500" />
-                Modo Ingeniero (Acceso Total)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => loginAsRole("technician")}>
-                <UserCheck className="mr-2 size-4 text-amber-500" />
-                Modo Técnico (Obras & Materiales)
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => { logout(); router.push("/login") }}>
               <LogOut className="mr-2 size-4" />

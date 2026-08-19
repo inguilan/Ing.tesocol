@@ -27,7 +27,11 @@ import { RecentRequests } from "@/components/dashboard/recent-requests"
 import { useStore } from "@/lib/store-context"
 
 export default function DashboardPage() {
-  const { projects, materialRequests, siteReports, activity, currentUser } = useStore()
+  const { projects: allProjects, materialRequests: allRequests, siteReports: allReports, activity, currentUser } = useStore()
+  const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
+  const projects = canManage ? allProjects : allProjects.filter((project) => project.technicianId === currentUser.id)
+  const materialRequests = canManage ? allRequests : allRequests.filter((request) => projects.some((project) => project.id === request.projectId || project.name === request.project))
+  const siteReports = canManage ? allReports : allReports.filter((report) => projects.some((project) => project.id === report.projectId))
 
   const pendingRequestsCount = materialRequests.filter((r) => r.status === "pending").length
   const inProgressProjectsCount = projects.filter((p) => p.status === "in_progress").length
@@ -84,7 +88,7 @@ export default function DashboardPage() {
         >
           Nueva solicitud
         </Button>
-        {currentUser.role === "engineer" && (
+        {canManage && (
           <Button render={<Link href="/projects/new" />}>
             <Plus data-icon="inline-start" />
             Crear proyecto

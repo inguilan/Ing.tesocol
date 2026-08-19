@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, HardHat, ShieldCheck, Sun, UserCheck, CheckCircle2, Lock } from "lucide-react"
+import { ArrowRight, HardHat, ShieldCheck, Sun, CheckCircle2, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,21 +11,19 @@ import { toast } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { loginAsRole } = useStore()
+  const { login } = useStore()
   const [role, setRole] = React.useState<"engineer" | "technician">("engineer")
-  const [email, setEmail] = React.useState("m.chen@TESOCOL.com")
-  const [password, setPassword] = React.useState("123456")
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    loginAsRole(role, email)
-    toast.success(`¡Bienvenido! Sesión iniciada como ${role === "engineer" ? "Ingeniero" : "Técnico"}`)
-    router.push("/")
-  }
-
-  const handleQuickLogin = (selectedRole: "engineer" | "technician") => {
-    loginAsRole(selectedRole)
-    toast.success(`Sesión iniciada como ${selectedRole === "engineer" ? "Ingeniero" : "Técnico"}`)
+    const loggedIn = login(email, password)
+    if (!loggedIn) {
+      toast.error("Credenciales inválidas o usuario inactivo.")
+      return
+    }
+    toast.success("¡Bienvenido! Sesión iniciada correctamente.")
     router.push("/")
   }
 
@@ -55,7 +53,8 @@ export default function LoginPage() {
             <Tabs defaultValue="engineer" value={role} onValueChange={(v) => {
               const r = v as "engineer" | "technician"
               setRole(r)
-              setEmail(r === "engineer" ? "m.chen@TESOCOL.com" : "c.ruiz@TESOCOL.com")
+              setEmail("")
+              setPassword("")
             }} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-3">
                 <TabsTrigger value="engineer" className="gap-2 font-semibold">
@@ -82,7 +81,7 @@ export default function LoginPage() {
                   <p className="font-bold flex items-center gap-1">
                     <HardHat className="size-3.5" /> Perfil Técnico de Obra:
                   </p>
-                  <p>Visualiza todos los proyectos creados por los ingenieros, consulta materiales en sitio y genera solicitudes.</p>
+                  <p>Visualiza únicamente los proyectos asignados a tu usuario y registra sus reportes de obra.</p>
                 </div>
               </TabsContent>
             </Tabs>
@@ -120,28 +119,8 @@ export default function LoginPage() {
             </form>
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-2 border-t pt-4 bg-muted/20">
-            <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Acceso Directo Sin Contraseña:</span>
-            <div className="grid grid-cols-2 gap-2 w-full">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-xs border-blue-500/40 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 font-semibold"
-                onClick={() => handleQuickLogin("engineer")}
-              >
-                <UserCheck className="size-3.5 mr-1" />
-                Ingeniero Demo
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-xs border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 font-semibold"
-                onClick={() => handleQuickLogin("technician")}
-              >
-                <UserCheck className="size-3.5 mr-1" />
-                Técnico Demo
-              </Button>
-            </div>
+          <CardFooter className="border-t pt-4 bg-muted/20 text-center text-xs text-muted-foreground">
+            El acceso se realiza con las credenciales asignadas por el administrador.
           </CardFooter>
         </Card>
 

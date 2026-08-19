@@ -25,12 +25,13 @@ export function EditProjectDialog({
   open,
   onOpenChange,
 }: EditProjectDialogProps) {
-  const { updateProject } = useStore()
+  const { updateProject, technicians } = useStore()
   const [status, setStatus] = React.useState<ProjectStatus>("in_progress")
   const [priority, setPriority] = React.useState<Priority>("medium")
   const [client, setClient] = React.useState("")
   const [location, setLocation] = React.useState("")
   const [capacityKw, setCapacityKw] = React.useState(0)
+  const [technicianId, setTechnicianId] = React.useState("")
 
   React.useEffect(() => {
     if (project) {
@@ -39,19 +40,27 @@ export function EditProjectDialog({
       setClient(project.client)
       setLocation(project.location)
       setCapacityKw(project.capacityKw)
+      setTechnicianId(project.technicianId ?? technicians[0]?.id ?? "")
     }
-  }, [project])
+  }, [project, technicians])
 
   if (!project) return null
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
+    const technician = technicians.find((user) => user.id === technicianId)
+    if (!technician) {
+      toast.error("Selecciona un técnico líder.")
+      return
+    }
     updateProject(project.id, {
       status,
       priority,
       client,
       location,
       capacityKw,
+      technicianId: technician.id,
+      technician: technician.name,
     })
     toast.success(`Proyecto ${project.id} actualizado`, {
       description: `Estado cambiado a ${status.replace("_", " ").toUpperCase()}`,
@@ -132,6 +141,20 @@ export function EditProjectDialog({
               className="w-full h-10 px-3 rounded-md border bg-card text-sm outline-none focus:ring-2 focus:ring-primary"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold">Técnico Líder Asignado</label>
+            <select
+              value={technicianId}
+              onChange={(e) => setTechnicianId(e.target.value)}
+              className="w-full h-10 px-3 rounded-md border bg-card text-sm outline-none focus:ring-2 focus:ring-primary"
+              required
+            >
+              {technicians.map((technician) => (
+                <option key={technician.id} value={technician.id}>{technician.name}</option>
+              ))}
+            </select>
           </div>
 
           <DialogFooter className="pt-2">

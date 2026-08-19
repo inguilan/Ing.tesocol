@@ -146,7 +146,7 @@ export function ProjectsTable({ data: propsData }: { data?: Project[] }) {
                 <TableHead className="hidden md:table-cell">Cliente</TableHead>
                 <TableHead className="hidden lg:table-cell">Ubicación</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="hidden sm:table-cell">Ingeniero</TableHead>
+                <TableHead className="hidden sm:table-cell">Responsables</TableHead>
                 <TableHead className="hidden xl:table-cell">Creado</TableHead>
                 <TableHead className="w-12 pr-6 text-right">Acciones</TableHead>
               </TableRow>
@@ -178,13 +178,18 @@ export function ProjectsTable({ data: propsData }: { data?: Project[] }) {
                     <StatusBadge status={project.status} />
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="size-6">
-                        <AvatarFallback className="bg-accent text-accent-foreground text-[10px]">
-                          {project.engineerInitials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{project.engineer}</span>
+                    <div className="flex flex-col gap-1">
+                      <span className="flex items-center gap-2 text-sm">
+                        <Avatar className="size-6">
+                          <AvatarFallback className="bg-accent text-accent-foreground text-[10px]">
+                            {project.engineerInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                        {project.engineer}
+                      </span>
+                      <span className="pl-8 text-xs text-muted-foreground">
+                        Técnico: {project.technician ?? "Sin asignar"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden xl:table-cell text-muted-foreground tabular-nums">

@@ -21,6 +21,14 @@ export const defaultEngineerUser: User = {
   initials: "MC"
 }
 
+export const defaultSuperadminUser: User = {
+  id: "usr-admin-1",
+  name: "Administrador TESOCOL",
+  email: "admin@tesocol.local",
+  role: "superadmin",
+  initials: "AD",
+}
+
 export const defaultTechnicianUser: User = {
   id: "usr-tech-1",
   name: "Carlos Ruiz (Técnico Obra)",
@@ -29,9 +37,19 @@ export const defaultTechnicianUser: User = {
   initials: "CR"
 }
 
+export const technicianUsers: User[] = [
+  defaultTechnicianUser,
+  { id: "usr-tech-2", name: "Laura Gómez (Técnica Obra)", email: "l.gomez@TESOCOL.com", role: "technician", initials: "LG" },
+  { id: "usr-tech-3", name: "Andrés Torres (Técnico Obra)", email: "a.torres@TESOCOL.com", role: "technician", initials: "AT" },
+]
+
 interface StoreContextType {
   isLoggedIn: boolean
   currentUser: User
+  technicians: User[]
+  users: User[]
+  addUser: (user: Omit<User, "id" | "initials"> & { password: string }) => User | null
+  setUserActive: (id: string, active: boolean) => void
   setCurrentUser: (user: User) => void
   projects: Project[]
   addProject: (project: Omit<Project, "id" | "createdDate" | "engineerInitials">) => Project
@@ -41,43 +59,71 @@ interface StoreContextType {
   addMaterialRequest: (request: Omit<MaterialRequest, "id" | "reference" | "date" | "itemsCount"> & { itemsList: any[] }) => MaterialRequest
   updateRequestStatus: (id: string, status: MaterialRequest["status"]) => void
   deliveries: Delivery[]
-  addDelivery: (delivery: Omit<Delivery, "id" | "reference" | "items">) => Delivery
+  addDelivery: (delivery: Omit<Delivery, "id" | "reference">) => Delivery
+  updateDeliveryStatus: (id: string, status: Delivery["status"], details?: Pick<Delivery, "receivedBy" | "receivedDate">) => void
   returns: ReturnRecord[]
-  addReturn: (returnRecord: Omit<ReturnRecord, "id" | "reference" | "items">) => ReturnRecord
+  addReturn: (returnRecord: Omit<ReturnRecord, "id" | "reference">) => ReturnRecord
+  updateReturnStatus: (id: string, status: ReturnRecord["status"]) => void
   siteReports: SiteMaterialReport[]
   addSiteReport: (report: Omit<SiteMaterialReport, "id" | "date" | "technician">) => SiteMaterialReport
   activity: ActivityEvent[]
-  loginAsRole: (role: "engineer" | "technician", email?: string) => void
+  login: (email: string, password: string) => boolean
+  loginAsRole: (role: User["role"], email?: string, password?: string) => boolean
   logout: () => void
 }
 
 const StoreContext = React.createContext<StoreContextType | undefined>(undefined)
 
+interface LocalAccount extends User {
+  password: string
+  active: boolean
+}
+
+const initialAccounts: LocalAccount[] = [
+  { ...defaultSuperadminUser, password: "TESOCOL-admin-2026", active: true },
+  { ...defaultEngineerUser, password: "TESOCOL-ingeniero-2026", active: true },
+  ...technicianUsers.map((user) => ({ ...user, password: `TESOCOL-${user.id}`, active: true })),
+]
+
+function readStoredArray<T>(key: string, fallback: T[]): T[] {
+  try {
+    const value = localStorage.getItem(key)
+    if (!value) return fallback
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed as T[] : fallback
+  } catch {
+    return fallback
+  }
+}
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = React.useState<boolean>(false)
   const [currentUser, setCurrentUser] = React.useState<User>(defaultEngineerUser)
+  const [accountsList, setAccountsList] = React.useState<LocalAccount[]>(initialAccounts)
   
   // Hydrate projects with sample materials
   const [projectsList, setProjectsList] = React.useState<Project[]>(() => {
-    return []
+    return initialProjects.map((project) => ({
+      ...project,
+      materials: project.materials ?? (project.id === "PRJ-1042" ? sampleMaterials : []),
+    }))
   })
 
   const [requestsList, setRequestsList] = React.useState<MaterialRequest[]>(() => {
-    return [] as MaterialRequest[]
-    /* return initialRequests.map(r => ({
+    return initialRequests.map(r => ({
       ...r,
-      itemsCount: r.items,
+      itemsCount: r.itemsCount,
       itemsList: [
         { id: "i1", materialName: "Panel Solar 550W", quantity: 20, unit: "piezas", notes: "Lote A" },
         { id: "i2", materialName: "Inversor Trifásico 50kW", quantity: 2, unit: "unidades", notes: "Urgente" },
         { id: "i3", materialName: "Cable Solar 6mm²", quantity: 150, unit: "metros", notes: "Color rojo" }
       ]
-    })) */
+    }))
   })
 
-  const [deliveriesList, setDeliveriesList] = React.useState<Delivery[]>([])
-  const [returnsList, setReturnsList] = React.useState<ReturnRecord[]>([])
-  const [activityList, setActivityList] = React.useState<ActivityEvent[]>([])
+  const [deliveriesList, setDeliveriesList] = React.useState<Delivery[]>(initialDeliveries)
+  const [returnsList, setReturnsList] = React.useState<ReturnRecord[]>(initialReturns)
+  const [activityList, setActivityList] = React.useState<ActivityEvent[]>(initialActivity)
   const [siteReportsList, setSiteReportsList] = React.useState<SiteMaterialReport[]>([])
 
   // Load / Save localStorage state
@@ -85,27 +131,44 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     try {
       const savedUser = localStorage.getItem("TESOCOL_v2_user")
       if (savedUser) {
-        setCurrentUser(JSON.parse(savedUser))
+        const parsedUser: unknown = JSON.parse(savedUser)
+        if (parsedUser && typeof parsedUser === "object" && "role" in parsedUser && "name" in parsedUser) {
+          setCurrentUser(parsedUser as User)
+        }
         setIsLoggedIn(true)
       }
       const savedAuth = localStorage.getItem("TESOCOL_v2_auth")
       if (savedAuth) {
-        setIsLoggedIn(JSON.parse(savedAuth))
+        const parsedAuth: unknown = JSON.parse(savedAuth)
+        if (typeof parsedAuth === "boolean") setIsLoggedIn(parsedAuth)
       }
-      const savedProjects = localStorage.getItem("TESOCOL_v2_projects")
-      if (savedProjects) {
-        setProjectsList(JSON.parse(savedProjects))
-      }
-      const savedRequests = localStorage.getItem("TESOCOL_v2_requests")
-      if (savedRequests) {
-        setRequestsList(JSON.parse(savedRequests))
-      }
-      const savedDeliveries = localStorage.getItem("TESOCOL_v2_deliveries")
-      if (savedDeliveries) setDeliveriesList(JSON.parse(savedDeliveries))
-      const savedReturns = localStorage.getItem("TESOCOL_v2_returns")
-      if (savedReturns) setReturnsList(JSON.parse(savedReturns))
-      const savedReports = localStorage.getItem("TESOCOL_v2_site_reports")
-      if (savedReports) setSiteReportsList(JSON.parse(savedReports))
+      const storedProjects = readStoredArray<Project>("TESOCOL_v2_projects", projectsList)
+      setProjectsList(storedProjects.map((project, index) => {
+        const technician = project.technicianId
+          ? technicianUsers.find((user) => user.id === project.technicianId)
+          : technicianUsers[index % technicianUsers.length]
+        return {
+          ...project,
+          technicianId: project.technicianId ?? technician?.id,
+          technician: project.technician ?? technician?.name,
+        }
+      }))
+      const savedRequests = readStoredArray<Record<string, unknown>>("TESOCOL_v2_requests", requestsList as unknown as Record<string, unknown>[])
+      setRequestsList(savedRequests.map((request) => ({
+        ...request,
+        itemsCount: Number(request.itemsCount ?? request.items ?? 0),
+      })) as MaterialRequest[])
+      setDeliveriesList(readStoredArray("TESOCOL_v2_deliveries", deliveriesList))
+      setReturnsList(readStoredArray("TESOCOL_v2_returns", returnsList))
+      setSiteReportsList(readStoredArray("TESOCOL_v2_site_reports", siteReportsList))
+      setActivityList(readStoredArray("TESOCOL_v2_activity", activityList))
+      const storedAccounts = readStoredArray<LocalAccount>("TESOCOL_v2_accounts", [])
+      const mergedAccounts = initialAccounts.map((defaultAccount) => {
+        const storedAccount = storedAccounts.find((account) => account.id === defaultAccount.id || account.email.toLowerCase() === defaultAccount.email.toLowerCase())
+        return storedAccount ? { ...defaultAccount, ...storedAccount, active: storedAccount.active !== false } : defaultAccount
+      })
+      const customAccounts = storedAccounts.filter((account) => !initialAccounts.some((defaultAccount) => defaultAccount.id === account.id || defaultAccount.email.toLowerCase() === account.email.toLowerCase()))
+      setAccountsList([...mergedAccounts, ...customAccounts])
     } catch (e) {
       console.error("Failed loading local storage", e)
     }
@@ -120,24 +183,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("TESOCOL_v2_deliveries", JSON.stringify(deliveriesList))
       localStorage.setItem("TESOCOL_v2_returns", JSON.stringify(returnsList))
       localStorage.setItem("TESOCOL_v2_site_reports", JSON.stringify(siteReportsList))
+      localStorage.setItem("TESOCOL_v2_activity", JSON.stringify(activityList))
+      localStorage.setItem("TESOCOL_v2_accounts", JSON.stringify(accountsList))
     } catch (e) {
       console.error("Failed saving local storage", e)
     }
-  }, [currentUser, isLoggedIn, projectsList, requestsList, deliveriesList, returnsList, siteReportsList])
+  }, [currentUser, isLoggedIn, projectsList, requestsList, deliveriesList, returnsList, siteReportsList, activityList, accountsList])
 
-  const loginAsRole = (role: "engineer" | "technician", email?: string) => {
+  const loginAsRole = (role: User["role"], email?: string, password?: string) => {
+    const account = accountsList.find((item) => item.role === role && item.email.toLowerCase() === (email ?? "").toLowerCase() && item.active)
+    const isQuickLogin = !password && (role === "engineer" || role === "technician")
+    if (!account && !isQuickLogin) return false
     setIsLoggedIn(true)
-    if (role === "engineer") {
-      setCurrentUser({
-        ...defaultEngineerUser,
-        email: email || defaultEngineerUser.email
-      })
-    } else {
-      setCurrentUser({
-        ...defaultTechnicianUser,
-        email: email || defaultTechnicianUser.email
-      })
-    }
+    const selectedUser = account ?? (role === "engineer" ? defaultEngineerUser : defaultTechnicianUser)
+    setCurrentUser(selectedUser)
+    return true
+  }
+
+  const login = (email: string, password: string) => {
+    const account = accountsList.find((item) => item.email.toLowerCase() === email.trim().toLowerCase() && item.password === password && item.active)
+    if (!account) return false
+    setCurrentUser(account)
+    setIsLoggedIn(true)
+    return true
+  }
+
+  const addUser = (data: Omit<User, "id" | "initials"> & { password: string }): User | null => {
+    if (accountsList.some((user) => user.email.toLowerCase() === data.email.toLowerCase())) return null
+    const initials = data.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()
+    const user: LocalAccount = { ...data, id: `usr-${Date.now()}`, initials, active: true }
+    setAccountsList((prev) => [...prev, user])
+    return user
+  }
+
+  const setUserActive = (id: string, active: boolean) => {
+    if (id === defaultSuperadminUser.id) return
+    setAccountsList((prev) => prev.map((user) => user.id === id ? { ...user, active } : user))
   }
 
   const logout = () => {
@@ -170,7 +251,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateProject = (id: string, updated: Partial<Project>) => {
+    const project = projectsList.find((item) => item.id === id)
     setProjectsList(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p))
+    if (project && updated.status && updated.status !== project.status) {
+      setActivityList(prev => [{
+        id: String(Date.now()),
+        type: "project",
+        title: `${project.id} cambió a ${updated.status}`,
+        description: `Estado actualizado para ${project.name}`,
+        user: currentUser.name,
+        time: "Hace un momento",
+      }, ...prev])
+    }
   }
 
   const deleteProject = (id: string) => {
@@ -204,19 +296,76 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateRequestStatus = (id: string, status: MaterialRequest["status"]) => {
+    const request = requestsList.find((item) => item.id === id)
     setRequestsList(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+    if (request) {
+      setActivityList(prev => [{
+        id: String(Date.now()),
+        type: "approval",
+        title: `${request.reference} cambió a ${status}`,
+        description: `Actualizado para ${request.project}`,
+        user: currentUser.name,
+        time: "Hace un momento",
+      }, ...prev])
+    }
   }
 
-  const addDelivery = (data: Omit<Delivery, "id" | "reference" | "items">): Delivery => {
-    const delivery: Delivery = { ...data, id: String(Date.now()), reference: `ENT-${Math.floor(1000 + Math.random() * 9000)}`, items: 0 }
+  const addDelivery = (data: Omit<Delivery, "id" | "reference">): Delivery => {
+    const delivery: Delivery = { ...data, id: String(Date.now()), reference: `ENT-${Math.floor(1000 + Math.random() * 9000)}`, createdBy: currentUser.name }
     setDeliveriesList(prev => [delivery, ...prev])
+    setActivityList(prev => [{
+      id: String(Date.now()),
+      type: "delivery",
+      title: `Entrega ${delivery.reference} programada`,
+      description: `${delivery.items} artículos para ${delivery.project}`,
+      user: currentUser.name,
+      time: "Hace un momento",
+    }, ...prev])
     return delivery
   }
 
-  const addReturn = (data: Omit<ReturnRecord, "id" | "reference" | "items">): ReturnRecord => {
-    const returnRecord: ReturnRecord = { ...data, id: String(Date.now()), reference: `DEV-${Math.floor(1000 + Math.random() * 9000)}`, items: 0 }
+  const updateDeliveryStatus = (id: string, status: Delivery["status"], details?: Pick<Delivery, "receivedBy" | "receivedDate">) => {
+    const delivery = deliveriesList.find((item) => item.id === id)
+    setDeliveriesList(prev => prev.map(item => item.id === id ? { ...item, status, ...details } : item))
+    if (delivery) {
+      setActivityList(prev => [{
+        id: String(Date.now()),
+        type: "delivery",
+        title: `${delivery.reference} cambió a ${status}`,
+        description: `Entrega para ${delivery.project}`,
+        user: currentUser.name,
+        time: "Hace un momento",
+      }, ...prev])
+    }
+  }
+
+  const addReturn = (data: Omit<ReturnRecord, "id" | "reference">): ReturnRecord => {
+    const returnRecord: ReturnRecord = { ...data, id: String(Date.now()), reference: `DEV-${Math.floor(1000 + Math.random() * 9000)}`, createdBy: currentUser.name }
     setReturnsList(prev => [returnRecord, ...prev])
+    setActivityList(prev => [{
+      id: String(Date.now()),
+      type: "return",
+      title: `Devolución ${returnRecord.reference} registrada`,
+      description: `${returnRecord.items} artículos de ${returnRecord.project}`,
+      user: currentUser.name,
+      time: "Hace un momento",
+    }, ...prev])
     return returnRecord
+  }
+
+  const updateReturnStatus = (id: string, status: ReturnRecord["status"]) => {
+    const returnRecord = returnsList.find((item) => item.id === id)
+    setReturnsList(prev => prev.map(item => item.id === id ? { ...item, status } : item))
+    if (returnRecord) {
+      setActivityList(prev => [{
+        id: String(Date.now()),
+        type: "return",
+        title: `${returnRecord.reference} cambió a ${status}`,
+        description: `Devolución de ${returnRecord.project}`,
+        user: currentUser.name,
+        time: "Hace un momento",
+      }, ...prev])
+    }
   }
 
   const addSiteReport = (data: Omit<SiteMaterialReport, "id" | "date" | "technician">): SiteMaterialReport => {
@@ -230,6 +379,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoggedIn,
         currentUser,
+        technicians: technicianUsers,
+        users: accountsList.map(({ password: _password, ...user }) => user),
+        addUser,
+        setUserActive,
         setCurrentUser,
         projects: projectsList,
         addProject,
@@ -240,11 +393,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updateRequestStatus,
         deliveries: deliveriesList,
         addDelivery,
+        updateDeliveryStatus,
         returns: returnsList,
         addReturn,
+        updateReturnStatus,
         siteReports: siteReportsList,
         addSiteReport,
         activity: activityList,
+        login,
         loginAsRole,
         logout
       }}

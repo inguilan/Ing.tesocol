@@ -17,7 +17,10 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { useStore } from "@/lib/store-context"
 
 export function RecentProjects() {
-  const { projects } = useStore()
+  const { projects: allProjects, currentUser } = useStore()
+  const projects = currentUser.role === "engineer"
+    ? allProjects
+    : allProjects.filter((project) => project.technicianId === currentUser.id)
   const recent = projects.slice(0, 4)
 
   return (

@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { TableToolbar } from "@/components/shared/table-toolbar"
 import type { ReturnRecord } from "@/lib/types"
 
-export function ReturnsTable({ data }: { data: ReturnRecord[] }) {
+export function ReturnsTable({ data, onStatusChange }: { data: ReturnRecord[]; onStatusChange?: (id: string, status: ReturnRecord["status"]) => void }) {
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState("all")
 
@@ -94,7 +94,19 @@ export function ReturnsTable({ data }: { data: ReturnRecord[] }) {
                     })}
                   </TableCell>
                   <TableCell className="pr-6 text-right">
-                    <StatusBadge status={r.status} />
+                    {onStatusChange ? (
+                      <select
+                        aria-label={`Estado de ${r.reference}`}
+                        value={r.status}
+                        onChange={(event) => onStatusChange(r.id, event.target.value as ReturnRecord["status"])}
+                        className="h-8 rounded-md border bg-card px-2 text-xs"
+                      >
+                        <option value="requested">Solicitada</option>
+                        <option value="in_review">En revisión</option>
+                        <option value="received">Recibida</option>
+                        <option value="closed">Cerrada</option>
+                      </select>
+                    ) : <StatusBadge status={r.status} />}
                   </TableCell>
                 </TableRow>
               ))}

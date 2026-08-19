@@ -14,7 +14,7 @@ import type { Priority, ProjectStatus } from "@/lib/types"
 
 export default function NewProjectPage() {
   const router = useRouter()
-  const { addProject, currentUser } = useStore()
+  const { addProject, currentUser, technicians } = useStore()
 
   const [name, setName] = React.useState("")
   const [client, setClient] = React.useState("")
@@ -23,12 +23,14 @@ export default function NewProjectPage() {
   const [priority, setPriority] = React.useState<Priority>("medium")
   const [status, setStatus] = React.useState<ProjectStatus>("planning")
   const [engineer, setEngineer] = React.useState(currentUser.name || "Maya Chen")
+  const [technicianId, setTechnicianId] = React.useState(technicians[0]?.id || "")
   const [description, setDescription] = React.useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name || !client || !location) {
-      toast.error("Por favor completa los campos obligatorios.")
+    const technician = technicians.find((user) => user.id === technicianId)
+    if (!name || !client || !location || !technician) {
+      toast.error("Completa los datos obligatorios y asigna un técnico líder.")
       return
     }
 
@@ -40,6 +42,8 @@ export default function NewProjectPage() {
       priority,
       status,
       engineer,
+      technicianId: technician.id,
+      technician: technician.name,
       description,
     })
 
@@ -163,6 +167,21 @@ export default function NewProjectPage() {
                 className="w-full h-10 px-3 rounded-md border bg-card text-sm outline-none focus:ring-2 focus:ring-primary"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold">Técnico Líder Asignado *</label>
+              <select
+                value={technicianId}
+                onChange={(e) => setTechnicianId(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border bg-card text-sm outline-none focus:ring-2 focus:ring-primary"
+                required
+              >
+                <option value="">Selecciona un técnico líder</option>
+                {technicians.map((technician) => (
+                  <option key={technician.id} value={technician.id}>{technician.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-2 md:col-span-2">

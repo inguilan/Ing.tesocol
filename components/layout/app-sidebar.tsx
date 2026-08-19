@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
-import { ChevronsUpDown, LogOut, Shield, Sun, User, UserCheck } from "lucide-react"
+import { ChevronsUpDown, LogOut, Sun } from "lucide-react"
 
 import {
   Sidebar,
@@ -20,7 +20,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -33,7 +32,8 @@ import { useStore } from "@/lib/store-context"
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { currentUser, loginAsRole, logout } = useStore()
+  const { currentUser, logout, materialRequests } = useStore()
+  const pendingRequests = materialRequests.filter((request) => request.status === "pending").length
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/"
@@ -74,7 +74,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Espacio de trabajo</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.filter((item) => currentUser.role === "engineer" || item.href === "/" || item.href === "/projects").map((item) => (
+              {navItems.filter((item) => currentUser.role === "superadmin" || (currentUser.role === "engineer" && item.href !== "/admin/users") || (currentUser.role === "technician" && (item.href === "/" || item.href === "/projects"))).map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     isActive={isActive(item.href)}
@@ -84,8 +84,8 @@ export function AppSidebar() {
                     <item.icon />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
-                  {item.badge ? (
-                    <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+                  {(item.badge || (item.href === "/material-requests" && pendingRequests > 0)) ? (
+                    <SidebarMenuBadge>{item.href === "/material-requests" ? pendingRequests : item.badge}</SidebarMenuBadge>
                   ) : null}
                 </SidebarMenuItem>
               ))}
@@ -114,7 +114,7 @@ export function AppSidebar() {
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-medium truncate">{currentUser.name}</span>
                   <span className="text-xs text-muted-foreground capitalize">
-                    {currentUser.role === 'engineer' ? 'Ingeniero Obra' : 'Técnico Obra'}
+                    {currentUser.role === 'superadmin' ? 'Superusuario' : currentUser.role === 'engineer' ? 'Ingeniero Obra' : 'Técnico Obra'}
                   </span>
                 </div>
                 <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
@@ -130,18 +130,6 @@ export function AppSidebar() {
                     <span className="text-xs font-normal text-muted-foreground">{currentUser.email}</span>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase">Cambiar Perfil</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => loginAsRole("engineer")}>
-                    <UserCheck className="size-4 text-blue-500 mr-2" />
-                    Modo Ingeniero
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => loginAsRole("technician")}>
-                    <UserCheck className="size-4 text-amber-500 mr-2" />
-                    Modo Técnico
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={handleLogout}>
                   <LogOut className="size-4 mr-2" />

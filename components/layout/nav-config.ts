@@ -5,6 +5,7 @@ import {
   Truck,
   Undo2,
   BarChart3,
+  UserCog,
   type LucideIcon,
 } from "lucide-react"
 
@@ -22,9 +23,9 @@ export const navItems: NavItem[] = [
     title: "Solicitudes de material",
     href: "/material-requests",
     icon: ClipboardList,
-    badge: "24",
   },
   { title: "Reportes", href: "/reports", icon: BarChart3 },
+  { title: "Usuarios y accesos", href: "/admin/users", icon: UserCog },
 ]
 
 export const labelMap: Record<string, string> = {
@@ -34,6 +35,8 @@ export const labelMap: Record<string, string> = {
   deliveries: "Entregas",
   returns: "Devoluciones",
   reports: "Reportes",
+  admin: "Administración",
+  users: "Usuarios y accesos",
   new: "Nuevo proyecto",
   settings: "Configuración",
 }

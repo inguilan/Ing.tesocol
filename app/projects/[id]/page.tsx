@@ -43,6 +43,7 @@ export default function ProjectDetailPage() {
   const { projects, materialRequests, deliveries, returns, updateProject, currentUser, siteReports, addSiteReport } = useStore()
 
   const project = projects.find((p) => p.id === projectId)
+  const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
   const [editing, setEditing] = React.useState(false)
   const [selectedRequestForPrint, setSelectedRequestForPrint] = React.useState<MaterialRequest | null>(null)
   const [materialsLeft, setMaterialsLeft] = React.useState("")
@@ -56,6 +57,17 @@ export default function ProjectDetailPage() {
         <h2 className="text-xl font-bold">Proyecto no encontrado</h2>
         <p className="text-muted-foreground text-sm">El proyecto con ID {projectId} no existe o fue archivado.</p>
         <Button render={<Link href="/projects" />}>Volver a Proyectos</Button>
+      </div>
+    )
+  }
+
+  if (currentUser.role === "technician" && project.technicianId !== currentUser.id) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6 text-center">
+        <ShieldCheck className="size-16 text-muted-foreground opacity-40" />
+        <h2 className="text-xl font-bold">Proyecto no asignado</h2>
+        <p className="max-w-md text-sm text-muted-foreground">Esta obra pertenece a otro técnico líder. Solo puedes consultar y reportar sobre los proyectos asignados a tu usuario.</p>
+        <Button render={<Link href="/projects" />}>Volver a mis proyectos</Button>
       </div>
     )
   }
@@ -86,7 +98,7 @@ export default function ProjectDetailPage() {
   const currentStepIndex = statusSteps.findIndex((s) => s.key === project.status)
 
   const handleStepChange = (newStatus: ProjectStatus) => {
-    if (currentUser.role !== "engineer") return
+    if (!canManage) return
     updateProject(project.id, { status: newStatus })
     toast.success(`Estado actualizado a ${newStatus.replace("_", " ").toUpperCase()}`)
   }
@@ -108,13 +120,13 @@ export default function ProjectDetailPage() {
           Volver a Proyectos
         </Button>
         <div className="flex items-center gap-2">
-          {currentUser.role === "engineer" && (
+          {canManage && (
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Edit className="mr-1.5 size-4" />
               Editar Proyecto
             </Button>
           )}
-          {currentUser.role === "engineer" && <Button size="sm" render={<Link href="/material-requests/new" />}><Plus className="mr-1.5 size-4" />Nueva Solicitud de Material</Button>}
+          {canManage && <Button size="sm" render={<Link href="/material-requests/new" />}><Plus className="mr-1.5 size-4" />Nueva Solicitud de Material</Button>}
         </div>
       </div>
 
@@ -150,6 +162,13 @@ export default function ProjectDetailPage() {
                 <User className="size-3.5" /> {project.engineer}
               </span>
             </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="text-center px-3">
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold block">Técnico Líder</span>
+              <span className="text-sm font-semibold flex items-center gap-1">
+                <User className="size-3.5" /> {project.technician ?? "Sin asignar"}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -164,7 +183,7 @@ export default function ProjectDetailPage() {
                 <button
                   key={step.key}
                   onClick={() => handleStepChange(step.key)}
-                  disabled={currentUser.role !== "engineer"}
+                  disabled={!canManage}
                   className={`flex items-center justify-center gap-2 p-2.5 rounded-lg text-xs font-semibold border transition-all ${
                     isActive
                       ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -189,7 +208,7 @@ export default function ProjectDetailPage() {
             <PackageCheck className="size-4" />
             Materiales en Sitio ({displayMaterials.length})
           </TabsTrigger>
-          {currentUser.role === "engineer" && <TabsTrigger value="requests" className="gap-2">
+          {canManage && <TabsTrigger value="requests" className="gap-2">
             <FileText className="size-4" />
             Solicitudes de Bodega ({projectRequests.length})
           </TabsTrigger>}
@@ -340,13 +359,16 @@ export default function ProjectDetailPage() {
                     <div className="flex justify-end"><Button type="submit">Enviar reporte al ingeniero</Button></div>
                   </form>
                 )}
-                <div className="space-y-3"><h3 className="font-semibold">Reportes enviados por el tecnico lider</h3>{projectSiteReports.length === 0 ? <p className="py-5 text-center text-sm text-muted-foreground">Aun no hay reporte de materiales para esta obra.</p> : projectSiteReports.map((report) => <div key={report.id} className="rounded-lg border p-4 text-sm"><div className="mb-3 flex justify-between gap-4"><span className="font-semibold">{report.technician}</span><span className="text-muted-foreground">{report.date}</span></div><p><span className="font-medium">Queda en sitio:</span> {report.materialsLeft || "No reportado"}</p><p className="mt-2"><span className="font-medium">Regresa a bodega:</span> {report.materialsReturned || "No reportado"}</p>{report.notes && <p className="mt-2 text-muted-foreground">{report.notes}</p>}</div>)}</div>
+                <div className="space-y-3"><h3 className="font-semibold">Actas técnicas enviadas</h3>{projectSiteReports.length === 0 ? <p className="rounded-lg border border-dashed py-5 text-center text-sm text-muted-foreground">Aún no hay actas técnicas para esta obra.</p> : projectSiteReports.map((report) => <div key={report.id} className="rounded-lg border bg-muted/20 p-4 text-sm"><div className="mb-3 flex justify-between gap-4"><span className="font-semibold">{report.technician}</span><span className="text-muted-foreground">{report.date}</span></div><p><span className="font-medium">Queda en sitio:</span> {report.materialsLeft || "No reportado"}</p><p className="mt-2"><span className="font-medium">Regresa a bodega:</span> {report.materialsReturned || "No reportado"}</p>{report.notes && <p className="mt-2 text-muted-foreground">{report.notes}</p>}</div>)}</div>
               </div>
-              {false ? (
-                <p className="py-6 text-center text-muted-foreground text-sm">
-                  Sin devoluciones registradas para {project.name}.
-                </p>
-              ) : (
+              <div className="space-y-3 border-t pt-6">
+                <div>
+                  <h3 className="font-semibold">Devoluciones registradas</h3>
+                  <p className="text-sm text-muted-foreground">Material que regresará o regresó a bodega.</p>
+                </div>
+                {projectReturns.length === 0 ? (
+                  <p className="rounded-lg border border-dashed py-5 text-center text-sm text-muted-foreground">No hay devoluciones registradas para esta obra.</p>
+                ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -371,7 +393,8 @@ export default function ProjectDetailPage() {
                     ))}
                   </TableBody>
                 </Table>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -24,7 +24,11 @@ import { PriorityBadge, StatusBadge } from "@/components/shared/status-badge"
 import { useStore } from "@/lib/store-context"
 
 export function RecentRequests() {
-  const { materialRequests } = useStore()
+  const { materialRequests: allRequests, projects, currentUser } = useStore()
+  const visibleProjects = currentUser.role === "engineer" ? projects : projects.filter((project) => project.technicianId === currentUser.id)
+  const materialRequests = currentUser.role === "engineer"
+    ? allRequests
+    : allRequests.filter((request) => visibleProjects.some((project) => project.id === request.projectId || project.name === request.project))
   const recent = materialRequests.slice(0, 5)
 
   return (

@@ -28,14 +28,14 @@ export default function NewMaterialRequestPage() {
   const [priority, setPriority] = React.useState<Priority>("medium")
   const [notes, setNotes] = React.useState("")
   const [createdRequestForPrint, setCreatedRequestForPrint] = React.useState<MaterialRequest | null>(null)
-
-  React.useEffect(() => { if (currentUser.role !== "engineer") router.replace("/projects") }, [currentUser.role, router])
-  if (currentUser.role !== "engineer") return null
-
   const [items, setItems] = React.useState<ItemInput[]>([
     { materialName: "Panel Solar Monocristalino 550W", quantity: 20, unit: "piezas", notes: "Serie Principal" },
     { materialName: "Inversor Central Trifásico 50kW", quantity: 2, unit: "unidades", notes: "Urgente" },
   ])
+
+  const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
+  React.useEffect(() => { if (!canManage) router.replace("/projects") }, [canManage, router])
+  if (!canManage) return null
 
   React.useEffect(() => {
     setItems([{ materialName: "", quantity: 1, unit: "piezas", notes: "" }])

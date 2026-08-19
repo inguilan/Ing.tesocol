@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { TableToolbar } from "@/components/shared/table-toolbar"
 import type { Delivery } from "@/lib/types"
 
-export function DeliveriesTable({ data }: { data: Delivery[] }) {
+export function DeliveriesTable({ data, onStatusChange }: { data: Delivery[]; onStatusChange?: (id: string, status: Delivery["status"], details?: Pick<Delivery, "receivedBy" | "receivedDate">) => void }) {
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState("all")
 
@@ -94,7 +94,19 @@ export function DeliveriesTable({ data }: { data: Delivery[] }) {
                     })}
                   </TableCell>
                   <TableCell className="pr-6 text-right">
-                    <StatusBadge status={d.status} />
+                    {onStatusChange ? (
+                      <select
+                        aria-label={`Estado de ${d.reference}`}
+                        value={d.status}
+                        onChange={(event) => onStatusChange(d.id, event.target.value as Delivery["status"], event.target.value === "delivered" ? { receivedDate: new Date().toISOString().slice(0, 10) } : undefined)}
+                        className="h-8 rounded-md border bg-card px-2 text-xs"
+                      >
+                        <option value="scheduled">Programada</option>
+                        <option value="in_transit">En tránsito</option>
+                        <option value="delivered">Entregada</option>
+                        <option value="delayed">Retrasada</option>
+                      </select>
+                    ) : <StatusBadge status={d.status} />}
                   </TableCell>
                 </TableRow>
               ))}

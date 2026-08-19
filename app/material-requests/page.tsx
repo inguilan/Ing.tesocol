@@ -14,8 +14,9 @@ import * as React from "react"
 export default function MaterialRequestsPage() {
   const { materialRequests, currentUser } = useStore()
   const router = useRouter()
-  React.useEffect(() => { if (currentUser.role !== "engineer") router.replace("/projects") }, [currentUser.role, router])
-  if (currentUser.role !== "engineer") return null
+  const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
+  React.useEffect(() => { if (!canManage) router.replace("/projects") }, [canManage, router])
+  if (!canManage) return null
 
   const pending = materialRequests.filter((r) => r.status === "pending").length
   const approved = materialRequests.filter(

@@ -21,7 +21,7 @@ export type ReturnStatus = "requested" | "in_review" | "received" | "closed"
 
 export type Priority = "low" | "medium" | "high" | "urgent"
 
-export type UserRole = "engineer" | "technician"
+export type UserRole = "superadmin" | "engineer" | "technician"
 
 export interface User {
   id: string
@@ -30,6 +30,7 @@ export interface User {
   role: UserRole
   initials: string
   avatar?: string
+  active?: boolean
 }
 
 export interface ProjectMaterial {
@@ -51,6 +52,7 @@ export interface Project {
   status: ProjectStatus
   engineer: string
   engineerInitials: string
+  technicianId?: string
   technician?: string
   priority: Priority
   createdDate: string
@@ -91,6 +93,10 @@ export interface Delivery {
   status: DeliveryStatus
   scheduledDate: string
   items: number
+  notes?: string
+  createdBy?: string
+  receivedBy?: string
+  receivedDate?: string
 }
 
 export interface ReturnRecord {
@@ -102,6 +108,9 @@ export interface ReturnRecord {
   status: ReturnStatus
   items: number
   date: string
+  condition?: "good" | "damaged" | "incorrect" | "surplus"
+  notes?: string
+  createdBy?: string
 }
 
 export interface SiteMaterialReport {
