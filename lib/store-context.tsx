@@ -49,6 +49,7 @@ interface StoreContextType {
   technicians: User[]
   users: User[]
   addUser: (user: Omit<User, "id" | "initials"> & { password: string }) => User | null
+  updateUserPassword: (id: string, password: string) => boolean
   setUserActive: (id: string, active: boolean) => void
   setCurrentUser: (user: User) => void
   projects: Project[]
@@ -165,7 +166,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const storedAccounts = readStoredArray<LocalAccount>("TESOCOL_v2_accounts", [])
       const mergedAccounts = initialAccounts.map((defaultAccount) => {
         const storedAccount = storedAccounts.find((account) => account.id === defaultAccount.id || account.email.toLowerCase() === defaultAccount.email.toLowerCase())
-        return storedAccount ? { ...defaultAccount, ...storedAccount, active: storedAccount.active !== false } : defaultAccount
+        return storedAccount ? {
+          ...defaultAccount,
+          ...storedAccount,
+          active: defaultAccount.id === defaultSuperadminUser.id ? true : storedAccount.active !== false,
+        } : defaultAccount
       })
       const customAccounts = storedAccounts.filter((account) => !initialAccounts.some((defaultAccount) => defaultAccount.id === account.id || defaultAccount.email.toLowerCase() === account.email.toLowerCase()))
       setAccountsList([...mergedAccounts, ...customAccounts])
@@ -201,7 +206,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = (email: string, password: string) => {
-    const account = accountsList.find((item) => item.email.toLowerCase() === email.trim().toLowerCase() && item.password === password && item.active)
+    const account = accountsList.find((item) => item.email.toLowerCase() === email.trim().toLowerCase() && item.password === password.trim() && item.active)
     if (!account) return false
     setCurrentUser(account)
     setIsLoggedIn(true)
@@ -219,6 +224,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const setUserActive = (id: string, active: boolean) => {
     if (id === defaultSuperadminUser.id) return
     setAccountsList((prev) => prev.map((user) => user.id === id ? { ...user, active } : user))
+  }
+
+  const updateUserPassword = (id: string, password: string) => {
+    if (password.trim().length < 8) return false
+    const exists = accountsList.some((user) => user.id === id)
+    if (!exists) return false
+    setAccountsList((prev) => prev.map((user) => {
+      if (user.id !== id) return user
+      return { ...user, password: password.trim() }
+    }))
+    return true
   }
 
   const logout = () => {
@@ -379,9 +395,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoggedIn,
         currentUser,
-        technicians: technicianUsers,
+        technicians: accountsList.filter((user) => user.role === "technician" && user.active),
         users: accountsList.map(({ password: _password, ...user }) => user),
         addUser,
+        updateUserPassword,
         setUserActive,
         setCurrentUser,
         projects: projectsList,

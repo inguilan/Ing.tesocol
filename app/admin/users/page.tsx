@@ -20,11 +20,12 @@ const roleLabels: Record<UserRole, string> = {
 
 export default function UsersAdminPage() {
   const router = useRouter()
-  const { currentUser, users, addUser, setUserActive } = useStore()
+  const { currentUser, users, addUser, updateUserPassword, setUserActive } = useStore()
   const [name, setName] = React.useState("")
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [role, setRole] = React.useState<Exclude<UserRole, "superadmin">>("technician")
+  const [passwordByUser, setPasswordByUser] = React.useState<Record<string, string>>({})
 
   React.useEffect(() => {
     if (currentUser.role !== "superadmin") router.replace("/")
@@ -43,6 +44,16 @@ export default function UsersAdminPage() {
     setName("")
     setEmail("")
     setPassword("")
+  }
+
+  function changePassword(userId: string) {
+    const password = passwordByUser[userId] ?? ""
+    if (!updateUserPassword(userId, password)) {
+      toast.error("La contraseña debe tener al menos 8 caracteres.")
+      return
+    }
+    setPasswordByUser((previous) => ({ ...previous, [userId]: "" }))
+    toast.success("Contraseña actualizada")
   }
 
   return (
@@ -80,9 +91,9 @@ export default function UsersAdminPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {users.map((user) => (
-              <div key={user.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div key={user.id} className="flex flex-col gap-3 rounded-lg border p-3">
                 <div className="flex items-center gap-3"><div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{user.initials}</div><div><p className="font-medium">{user.name}</p><p className="text-xs text-muted-foreground">{user.email}</p></div></div>
-                <div className="flex items-center gap-2"><Badge variant={user.active === false ? "secondary" : "outline"}>{user.active === false ? "Inactivo" : roleLabels[user.role]}</Badge>{user.role !== "superadmin" && <Button variant="outline" size="sm" onClick={() => setUserActive(user.id, user.active === false)}> {user.active === false ? "Activar" : "Desactivar"}</Button>}{user.role === "superadmin" && <ShieldCheck className="size-4 text-red-500" />}</div>
+                <div className="flex flex-wrap items-center gap-2"><Badge variant={user.active === false ? "secondary" : "outline"}>{user.active === false ? "Inactivo" : roleLabels[user.role]}</Badge>{user.role !== "superadmin" && <Button variant="outline" size="sm" onClick={() => setUserActive(user.id, user.active === false)}> {user.active === false ? "Activar" : "Desactivar"}</Button>}{user.role === "superadmin" && <ShieldCheck className="size-4 text-red-500" />}<input type="password" minLength={8} value={passwordByUser[user.id] ?? ""} onChange={(event) => setPasswordByUser((previous) => ({ ...previous, [user.id]: event.target.value }))} placeholder="Nueva contraseña" className="h-9 min-w-40 flex-1 rounded-md border bg-card px-3 text-xs" /><Button variant="outline" size="sm" onClick={() => changePassword(user.id)}>Cambiar contraseña</Button></div>
               </div>
             ))}
           </CardContent>
