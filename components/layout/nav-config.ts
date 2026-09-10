@@ -24,6 +24,8 @@ export const navItems: NavItem[] = [
     href: "/material-requests",
     icon: ClipboardList,
   },
+  { title: "Entregas", href: "/deliveries", icon: Truck },
+  { title: "Devoluciones", href: "/returns", icon: Undo2 },
   { title: "Reportes", href: "/reports", icon: BarChart3 },
   { title: "Usuarios y accesos", href: "/admin/users", icon: UserCog },
 ]

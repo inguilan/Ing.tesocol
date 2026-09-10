@@ -8,10 +8,11 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { StoreProvider } from "@/lib/store-context"
 import { AppShell } from "@/components/layout/app-shell"
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], preload: false })
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 })
 
 export const metadata: Metadata = {

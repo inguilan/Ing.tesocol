@@ -36,8 +36,9 @@ export function AppHeader() {
   const { currentUser, logout, projects: allProjects, materialRequests: allRequests, deliveries: allDeliveries, returns: allReturns } = useStore()
   const [searchQuery, setSearchQuery] = React.useState("")
   const segments = pathname.split("/").filter(Boolean)
-  const projects = currentUser.role === "engineer" ? allProjects : allProjects.filter((project) => project.technicianId === currentUser.id)
-  const projectMatches = (projectId?: string, projectName?: string) => currentUser.role === "engineer" || projects.some((project) => project.id === projectId || project.name === projectName)
+  const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
+  const projects = canManage ? allProjects : allProjects.filter((project) => project.technicianId === currentUser.id)
+  const projectMatches = (projectId?: string, projectName?: string) => canManage || projects.some((project) => project.id === projectId || project.name === projectName)
   const materialRequests = allRequests.filter((request) => projectMatches(request.projectId, request.project))
   const deliveries = allDeliveries.filter((delivery) => projectMatches(delivery.projectId, delivery.project))
   const returns = allReturns.filter((returnRecord) => projectMatches(returnRecord.projectId, returnRecord.project))

@@ -80,7 +80,7 @@ export default function DashboardPage() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <PageHeader
         title="Panel Principal"
-        description={`Vista operativa del flujo de materiales (${currentUser.role === 'engineer' ? 'Modo Ingeniero — Acceso Total' : 'Modo Técnico — Proyectos Asignados'}).`}
+        description={`Vista operativa del flujo de materiales (${canManage ? 'Acceso Total' : 'Proyectos Asignados'}).`}
       >
         <Button
           variant="outline"

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { projects as initialProjects, materialRequests as initialRequests, deliveries as initialDeliveries, returns as initialReturns, activity as initialActivity } from "./data"
 import type { Project, MaterialRequest, Delivery, ReturnRecord, ActivityEvent, User, ProjectMaterial, SiteMaterialReport } from "./types"
+import { supabase } from "./supabase-browser"
 
 // Default initial materials for projects
 export const sampleMaterials: ProjectMaterial[] = [
@@ -48,9 +49,9 @@ interface StoreContextType {
   currentUser: User
   technicians: User[]
   users: User[]
-  addUser: (user: Omit<User, "id" | "initials"> & { password: string }) => User | null
-  updateUserPassword: (id: string, password: string) => boolean
-  setUserActive: (id: string, active: boolean) => void
+  addUser: (user: Omit<User, "id" | "initials"> & { password: string }) => Promise<User | null>
+  updateUserPassword: (id: string, password: string) => Promise<boolean>
+  setUserActive: (id: string, active: boolean) => Promise<boolean>
   setCurrentUser: (user: User) => void
   projects: Project[]
   addProject: (project: Omit<Project, "id" | "createdDate" | "engineerInitials">) => Project
@@ -68,7 +69,7 @@ interface StoreContextType {
   siteReports: SiteMaterialReport[]
   addSiteReport: (report: Omit<SiteMaterialReport, "id" | "date" | "technician">) => SiteMaterialReport
   activity: ActivityEvent[]
-  login: (email: string, password: string) => boolean
+  login: (email: string, password: string) => Promise<boolean>
   loginAsRole: (role: User["role"], email?: string, password?: string) => boolean
   logout: () => void
 }
@@ -78,6 +79,111 @@ const StoreContext = React.createContext<StoreContextType | undefined>(undefined
 interface LocalAccount extends User {
   password: string
   active: boolean
+}
+
+interface AppState {
+  projects: Project[]
+  materialRequests: MaterialRequest[]
+  deliveries: Delivery[]
+  returns: ReturnRecord[]
+  siteReports: SiteMaterialReport[]
+  activity: ActivityEvent[]
+}
+
+type BrowserSupabaseClient = NonNullable<typeof supabase>
+
+async function syncOperationalTables(client: BrowserSupabaseClient, state: AppState) {
+  const operations = [
+    client.from("projects").upsert(state.projects.map((project) => ({
+      legacy_id: project.id,
+      name: project.name,
+      client: project.client,
+      status: project.status,
+      location: project.location,
+      capacity_kw: project.capacityKw,
+      priority: project.priority,
+      engineer: project.engineer,
+      engineer_initials: project.engineerInitials,
+      technician_id: project.technicianId ?? null,
+      technician: project.technician ?? null,
+      description: project.description ?? null,
+      materials: project.materials ?? [],
+    })), { onConflict: "legacy_id" }),
+    client.from("material_requests").upsert(state.materialRequests.map((request) => ({
+      legacy_id: request.id,
+      reference: request.reference,
+      project_name: request.project,
+      requested_by_name: request.requestedBy,
+      requested_by_role: request.requestedByRole ?? null,
+      items_count: request.itemsCount,
+      items: request.itemsList ?? [],
+      material_name: request.itemsList?.[0]?.materialName ?? request.reference,
+      quantity: request.itemsList?.reduce((total, item) => total + Number(item.quantity || 0), 0) || request.itemsCount,
+      unit: request.itemsList?.[0]?.unit ?? "unidad",
+      status: request.status,
+      priority: request.priority,
+      request_date: request.date,
+      notes: request.notes ?? null,
+    })), { onConflict: "legacy_id" }),
+    client.from("deliveries").upsert(state.deliveries.map((delivery) => ({
+      legacy_id: delivery.id,
+      reference: delivery.reference,
+      project_name: delivery.project,
+      carrier: delivery.carrier,
+      scheduled_date: delivery.scheduledDate,
+      items_count: delivery.items,
+      status: delivery.status,
+      created_by_name: delivery.createdBy ?? null,
+      received_by_name: delivery.receivedBy ?? null,
+      received_date: delivery.receivedDate ?? null,
+      notes: delivery.notes ?? null,
+    })), { onConflict: "legacy_id" }),
+    client.from("returns").upsert(state.returns.map((record) => ({
+      legacy_id: record.id,
+      reference: record.reference,
+      project_name: record.project,
+      quantity: record.items,
+      items_count: record.items,
+      reason: record.reason,
+      status: record.status,
+      project_date: record.date,
+      condition: record.condition ?? null,
+      notes: record.notes ?? null,
+      created_by_name: record.createdBy ?? null,
+    })), { onConflict: "legacy_id" }),
+    client.from("site_reports").upsert(state.siteReports.map((report) => ({
+      legacy_id: report.id,
+      project_id: report.projectId,
+      project_name: report.project,
+      technician: report.technician,
+      report_date: report.date,
+      materials_left: report.materialsLeft,
+      materials_returned: report.materialsReturned,
+      notes: report.notes ?? null,
+    })), { onConflict: "legacy_id" }),
+    client.from("activity_events").upsert(state.activity.map((event) => ({
+      legacy_id: event.id,
+      event_type: event.type,
+      title: event.title,
+      description: event.description,
+      user_name: event.user,
+      event_time: event.time,
+    })), { onConflict: "legacy_id" }),
+  ]
+
+  const results = await Promise.all(operations)
+  const failed = results
+    .map((result, index) => ({ result, table: ["projects", "material_requests", "deliveries", "returns", "site_reports", "activity_events"][index] }))
+    .find(({ result }) => result.error)
+  if (failed?.result.error) {
+    console.error(`Failed syncing Supabase table ${failed.table}`, {
+      code: failed.result.error.code,
+      message: failed.result.error.message,
+      details: failed.result.error.details,
+      hint: failed.result.error.hint,
+    })
+  }
+  return !failed
 }
 
 const initialAccounts: LocalAccount[] = [
@@ -99,6 +205,7 @@ function readStoredArray<T>(key: string, fallback: T[]): T[] {
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = React.useState<boolean>(false)
+  const [authReady, setAuthReady] = React.useState<boolean>(!supabase)
   const [currentUser, setCurrentUser] = React.useState<User>(defaultEngineerUser)
   const [accountsList, setAccountsList] = React.useState<LocalAccount[]>(initialAccounts)
   
@@ -126,10 +233,56 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [returnsList, setReturnsList] = React.useState<ReturnRecord[]>(initialReturns)
   const [activityList, setActivityList] = React.useState<ActivityEvent[]>(initialActivity)
   const [siteReportsList, setSiteReportsList] = React.useState<SiteMaterialReport[]>([])
+  const appStateHydrated = React.useRef(!supabase)
+
+  React.useEffect(() => {
+    if (!supabase) return
+    const client = supabase
+    let mounted = true
+
+    const loadUser = async (userId: string) => {
+      const { data } = await client.from("profiles").select("id, name, email, role, initials, avatar, active").eq("id", userId).single()
+      if (!mounted) return
+      if (data) {
+        setCurrentUser(data as User)
+        setIsLoggedIn(data.active !== false)
+        const { data: { session } } = await client.auth.getSession()
+        if (session && data.role === "superadmin") {
+          const response = await fetch("/api/admin/users", { headers: { Authorization: `Bearer ${session.access_token}` } })
+          if (response.ok) {
+            const result = await response.json() as { users: User[] }
+            setAccountsList(result.users.map((user) => ({ ...user, password: "", active: user.active !== false })))
+          }
+        }
+      } else {
+        setIsLoggedIn(false)
+      }
+      setAuthReady(true)
+    }
+
+    void client.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) void loadUser(session.user.id)
+      else if (mounted) setAuthReady(true)
+    })
+
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) void loadUser(session.user.id)
+      else if (mounted) {
+        setIsLoggedIn(false)
+        setAuthReady(true)
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   // Load / Save localStorage state
   React.useEffect(() => {
     try {
+      if (supabase) return
       const savedUser = localStorage.getItem("TESOCOL_v2_user")
       if (savedUser) {
         const parsedUser: unknown = JSON.parse(savedUser)
@@ -177,10 +330,72 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Failed loading local storage", e)
     }
-  }, [])
+  }, []) 
+
+  React.useEffect(() => {
+    if (!supabase || !isLoggedIn) return
+    const client = supabase
+    let mounted = true
+
+    const loadAppState = async () => {
+      const { data, error } = await client.from("app_state").select("state").eq("id", "default").maybeSingle()
+      if (!mounted) return
+      if (error) {
+        console.error("Failed loading Supabase app state", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        })
+        appStateHydrated.current = true
+        return
+      }
+      if (data?.state) {
+        const state = data.state as Partial<AppState>
+        if (state.projects) setProjectsList(state.projects)
+        if (state.materialRequests) setRequestsList(state.materialRequests)
+        if (state.deliveries) setDeliveriesList(state.deliveries)
+        if (state.returns) setReturnsList(state.returns)
+        if (state.siteReports) setSiteReportsList(state.siteReports)
+        if (state.activity) setActivityList(state.activity)
+      } else {
+        const initialState: AppState = {
+          projects: projectsList,
+          materialRequests: requestsList,
+          deliveries: deliveriesList,
+          returns: returnsList,
+          siteReports: siteReportsList,
+          activity: activityList,
+        }
+        const { error: insertError } = await client.from("app_state").insert({ id: "default", state: initialState })
+        if (insertError) console.error("Failed initializing Supabase app state", insertError)
+        await syncOperationalTables(client, initialState)
+      }
+      appStateHydrated.current = true
+    }
+
+    void loadAppState()
+    return () => {
+      mounted = false
+    }
+  }, [isLoggedIn])
 
   React.useEffect(() => {
     try {
+      if (supabase) {
+        if (!isLoggedIn || !appStateHydrated.current) return
+        const state: AppState = {
+          projects: projectsList,
+          materialRequests: requestsList,
+          deliveries: deliveriesList,
+          returns: returnsList,
+          siteReports: siteReportsList,
+          activity: activityList,
+        }
+        void supabase.from("app_state").upsert({ id: "default", state, updated_at: new Date().toISOString() })
+        void syncOperationalTables(supabase, state)
+        return
+      }
       localStorage.setItem("TESOCOL_v2_user", JSON.stringify(currentUser))
       localStorage.setItem("TESOCOL_v2_auth", JSON.stringify(isLoggedIn))
       localStorage.setItem("TESOCOL_v2_projects", JSON.stringify(projectsList))
@@ -205,7 +420,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return true
   }
 
-  const login = (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
+    if (supabase) {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      return !error
+    }
     const account = accountsList.find((item) => item.email.toLowerCase() === email.trim().toLowerCase() && item.password === password.trim() && item.active)
     if (!account) return false
     setCurrentUser(account)
@@ -213,7 +432,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return true
   }
 
-  const addUser = (data: Omit<User, "id" | "initials"> & { password: string }): User | null => {
+  const addUser = async (data: Omit<User, "id" | "initials"> & { password: string }): Promise<User | null> => {
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return null
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ action: "create", ...data }),
+      })
+      if (!response.ok) return null
+      const result = await response.json() as { user: User }
+      setAccountsList((prev) => [...prev.filter((user) => user.id !== result.user.id), { ...result.user, password: "", active: true }])
+      return result.user
+    }
     if (accountsList.some((user) => user.email.toLowerCase() === data.email.toLowerCase())) return null
     const initials = data.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()
     const user: LocalAccount = { ...data, id: `usr-${Date.now()}`, initials, active: true }
@@ -221,13 +453,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return user
   }
 
-  const setUserActive = (id: string, active: boolean) => {
-    if (id === defaultSuperadminUser.id) return
+  const setUserActive = async (id: string, active: boolean): Promise<boolean> => {
+    if (id === defaultSuperadminUser.id) return false
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return false
+      const response = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ action: "set-active", id, active }) })
+      if (!response.ok) return false
+    }
     setAccountsList((prev) => prev.map((user) => user.id === id ? { ...user, active } : user))
+    return true
   }
 
-  const updateUserPassword = (id: string, password: string) => {
+  const updateUserPassword = async (id: string, password: string): Promise<boolean> => {
     if (password.trim().length < 8) return false
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return false
+      const response = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ action: "update-password", id, password: password.trim() }) })
+      return response.ok
+    }
     const exists = accountsList.some((user) => user.id === id)
     if (!exists) return false
     setAccountsList((prev) => prev.map((user) => {
@@ -238,6 +483,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
+    if (supabase) {
+      void supabase.auth.signOut()
+      return
+    }
     setIsLoggedIn(false)
   }
 
@@ -389,6 +638,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setSiteReportsList(prev => [report, ...prev])
     return report
   }
+
+  if (!authReady) return null
 
   return (
     <StoreContext.Provider

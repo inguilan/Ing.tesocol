@@ -33,11 +33,11 @@ export default function UsersAdminPage() {
 
   if (currentUser.role !== "superadmin") return null
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const created = addUser({ name: name.trim(), email: email.trim(), password, role })
+    const created = await addUser({ name: name.trim(), email: email.trim(), password, role })
     if (!created) {
-      toast.error("Ya existe un usuario con ese correo.")
+      toast.error("No se pudo crear el usuario", { description: "Comprueba la conexión con Supabase y que el correo no exista." })
       return
     }
     toast.success("Usuario creado", { description: `${created.name} podrá ingresar con sus credenciales.` })
@@ -46,9 +46,9 @@ export default function UsersAdminPage() {
     setPassword("")
   }
 
-  function changePassword(userId: string) {
+  async function changePassword(userId: string) {
     const password = passwordByUser[userId] ?? ""
-    if (!updateUserPassword(userId, password)) {
+    if (!(await updateUserPassword(userId, password))) {
       toast.error("La contraseña debe tener al menos 8 caracteres.")
       return
     }
@@ -63,7 +63,7 @@ export default function UsersAdminPage() {
       <Card className="border-amber-500/30 bg-amber-500/5">
         <CardContent className="flex gap-3 p-4 text-sm">
           <KeyRound className="mt-0.5 size-5 shrink-0 text-amber-600" />
-          <p>Esta versión guarda las cuentas localmente para pruebas. Cuando conectemos Supabase, las contraseñas deberán gestionarse con Supabase Auth y no se almacenarán en el navegador.</p>
+          <p>Las cuentas y contraseñas se gestionan con Supabase Auth. Las contraseñas nunca se almacenan en el navegador.</p>
         </CardContent>
       </Card>
 
@@ -87,7 +87,7 @@ export default function UsersAdminPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Users className="size-5" />Cuentas registradas</CardTitle>
-            <CardDescription>{users.length} usuarios configurados en este dispositivo.</CardDescription>
+            <CardDescription>{users.length} usuarios configurados en Supabase.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {users.map((user) => (
