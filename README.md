@@ -35,6 +35,7 @@ No subas `.env.local` a Git. Ya está incluido en `.gitignore`.
    - `supabase/migrations/20260826140000_profiles.sql`
    - `supabase/migrations/20260826141000_app_state.sql`
    - `supabase/migrations/20260826142000_operational_sync.sql`
+   - `supabase/migrations/20260909150000_fix_operational_conflict_indexes.sql`
 4. En **Authentication > Users**, crea un usuario con email y contraseña.
 5. Convierte ese usuario en administrador ejecutando:
 

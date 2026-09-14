@@ -1,21 +1,15 @@
 FROM node:20-bookworm-slim AS deps
 
-ENV COREPACK_HOME=/tmp/corepack
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
-
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 
 FROM node:20-bookworm-slim AS builder
-
-ENV COREPACK_HOME=/tmp/corepack
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
+RUN npm run build
 
 FROM node:20-bookworm-slim AS runner
 
