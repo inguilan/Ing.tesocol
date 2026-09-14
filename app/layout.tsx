@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   description:
     "Controla el flujo operativo de materiales en proyectos de instalación solar, desde la solicitud hasta el cierre del proyecto.",
   generator: "v0.app",
+  icons: {
+    icon: "/icon.svg",
+  },
 }
 
 export const viewport: Viewport = {
