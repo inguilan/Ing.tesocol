@@ -62,9 +62,13 @@ interface StoreContextType {
   updateRequestStatus: (id: string, status: MaterialRequest["status"]) => void
   deliveries: Delivery[]
   addDelivery: (delivery: Omit<Delivery, "id" | "reference">) => Delivery
+  updateDelivery: (id: string, updated: Partial<Omit<Delivery, "id" | "reference">>) => void
+  deleteDelivery: (id: string) => void
   updateDeliveryStatus: (id: string, status: Delivery["status"], details?: Pick<Delivery, "receivedBy" | "receivedDate">) => void
   returns: ReturnRecord[]
   addReturn: (returnRecord: Omit<ReturnRecord, "id" | "reference">) => ReturnRecord
+  updateReturn: (id: string, updated: Partial<Omit<ReturnRecord, "id" | "reference">>) => void
+  deleteReturn: (id: string) => void
   updateReturnStatus: (id: string, status: ReturnRecord["status"]) => void
   siteReports: SiteMaterialReport[]
   addSiteReport: (report: Omit<SiteMaterialReport, "id" | "date" | "technician">) => SiteMaterialReport
@@ -257,6 +261,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (data) {
         setCurrentUser(data as User)
         setIsLoggedIn(data.active !== false)
+        const { data: profiles, error: profilesError } = await client
+          .from("profiles")
+          .select("id, name, email, role, initials, avatar, active")
+          .eq("active", true)
+          .order("name")
+        if (profilesError) {
+          console.error("Failed loading technician profiles", {
+            code: profilesError.code,
+            message: profilesError.message,
+            details: profilesError.details,
+            hint: profilesError.hint,
+          })
+        } else if (profiles) {
+          setAccountsList(profiles.map((user) => ({ ...user, password: "", active: user.active !== false })))
+        }
         const { data: { session } } = await client.auth.getSession()
         if (session && data.role === "superadmin") {
           const response = await fetch("/api/admin/users", { headers: { Authorization: `Bearer ${session.access_token}` } })
@@ -550,6 +569,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const deleteProject = (id: string) => {
     setProjectsList(prev => prev.filter(p => p.id !== id))
+    if (supabase) void supabase.from("projects").delete().eq("legacy_id", id)
   }
 
   const addMaterialRequest = (data: Omit<MaterialRequest, "id" | "reference" | "date" | "itemsCount"> & { itemsList: any[] }): MaterialRequest => {
@@ -607,6 +627,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return delivery
   }
 
+  const updateDelivery = (id: string, updated: Partial<Omit<Delivery, "id" | "reference">>) => {
+    const delivery = deliveriesList.find((item) => item.id === id)
+    setDeliveriesList(prev => prev.map(item => item.id === id ? { ...item, ...updated } : item))
+    if (delivery) {
+      setActivityList(prev => [{
+        id: String(Date.now()),
+        type: "delivery",
+        title: `${delivery.reference} actualizada`,
+        description: `Entrega para ${updated.project ?? delivery.project}`,
+        user: currentUser.name,
+        time: "Hace un momento",
+      }, ...prev])
+    }
+  }
+
+  const deleteDelivery = (id: string) => {
+    setDeliveriesList(prev => prev.filter(item => item.id !== id))
+    if (supabase) void supabase.from("deliveries").delete().eq("legacy_id", id)
+  }
+
   const updateDeliveryStatus = (id: string, status: Delivery["status"], details?: Pick<Delivery, "receivedBy" | "receivedDate">) => {
     const delivery = deliveriesList.find((item) => item.id === id)
     setDeliveriesList(prev => prev.map(item => item.id === id ? { ...item, status, ...details } : item))
@@ -634,6 +674,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       time: "Hace un momento",
     }, ...prev])
     return returnRecord
+  }
+
+  const updateReturn = (id: string, updated: Partial<Omit<ReturnRecord, "id" | "reference">>) => {
+    const returnRecord = returnsList.find((item) => item.id === id)
+    setReturnsList(prev => prev.map(item => item.id === id ? { ...item, ...updated } : item))
+    if (returnRecord) {
+      setActivityList(prev => [{
+        id: String(Date.now()),
+        type: "return",
+        title: `${returnRecord.reference} actualizada`,
+        description: `Devolución de ${updated.project ?? returnRecord.project}`,
+        user: currentUser.name,
+        time: "Hace un momento",
+      }, ...prev])
+    }
+  }
+
+  const deleteReturn = (id: string) => {
+    setReturnsList(prev => prev.filter(item => item.id !== id))
+    if (supabase) void supabase.from("returns").delete().eq("legacy_id", id)
   }
 
   const updateReturnStatus = (id: string, status: ReturnRecord["status"]) => {
@@ -679,9 +739,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updateRequestStatus,
         deliveries: deliveriesList,
         addDelivery,
+        updateDelivery,
+        deleteDelivery,
         updateDeliveryStatus,
         returns: returnsList,
         addReturn,
+        updateReturn,
+        deleteReturn,
         updateReturnStatus,
         siteReports: siteReportsList,
         addSiteReport,

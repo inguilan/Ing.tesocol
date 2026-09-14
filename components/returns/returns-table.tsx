@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Undo2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react"
 
 import {
   Table,
@@ -16,10 +16,17 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { TableToolbar } from "@/components/shared/table-toolbar"
 import type { ReturnRecord } from "@/lib/types"
+import type { Project } from "@/lib/types"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { EditReturnDialog } from "@/components/returns/edit-return-dialog"
 
-export function ReturnsTable({ data, onStatusChange }: { data: ReturnRecord[]; onStatusChange?: (id: string, status: ReturnRecord["status"]) => void }) {
+export function ReturnsTable({ data, projects, onStatusChange, onSave, onDelete }: { data: ReturnRecord[]; projects: Project[]; onStatusChange?: (id: string, status: ReturnRecord["status"]) => void; onSave: (id: string, updated: Partial<Omit<ReturnRecord, "id" | "reference">>) => void; onDelete: (id: string) => void }) {
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState("all")
+  const [editing, setEditing] = React.useState<ReturnRecord | null>(null)
+  const [deleteTarget, setDeleteTarget] = React.useState<ReturnRecord | null>(null)
 
   const filtered = data.filter((r) => {
     const matchesSearch =
@@ -69,7 +76,8 @@ export function ReturnsTable({ data, onStatusChange }: { data: ReturnRecord[]; o
                 <TableHead className="hidden md:table-cell">Motivo</TableHead>
                 <TableHead className="text-right">Artículos</TableHead>
                 <TableHead className="hidden sm:table-cell">Fecha</TableHead>
-                <TableHead className="pr-6 text-right">Estado</TableHead>
+                <TableHead className="text-right">Estado</TableHead>
+                <TableHead className="w-12 pr-6" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -93,7 +101,7 @@ export function ReturnsTable({ data, onStatusChange }: { data: ReturnRecord[]; o
                       day: "numeric",
                     })}
                   </TableCell>
-                  <TableCell className="pr-6 text-right">
+                  <TableCell className="text-right">
                     {onStatusChange ? (
                       <select
                         aria-label={`Estado de ${r.reference}`}
@@ -108,12 +116,29 @@ export function ReturnsTable({ data, onStatusChange }: { data: ReturnRecord[]; o
                       </select>
                     ) : <StatusBadge status={r.status} />}
                   </TableCell>
+                  <TableCell className="pr-6 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}><MoreHorizontal /><span className="sr-only">Acciones de {r.reference}</span></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditing(r)}><Pencil />Editar devolución</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(r)}><Trash2 />Eliminar devolución</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
       </Card>
+      <EditReturnDialog record={editing} projects={projects} open={editing !== null} onOpenChange={(open) => !open && setEditing(null)} onSave={onSave} />
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>¿Eliminar esta devolución?</AlertDialogTitle><AlertDialogDescription>{deleteTarget ? `Se eliminará ${deleteTarget.reference} de forma permanente.` : ""}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive/10 text-destructive hover:bg-destructive/20" onClick={() => { if (deleteTarget) onDelete(deleteTarget.id); setDeleteTarget(null) }}>Eliminar</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
