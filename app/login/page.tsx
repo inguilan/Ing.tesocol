@@ -24,7 +24,7 @@ export default function LoginPage() {
     const loggedIn = await login(email, password)
     if (!loggedIn) {
       setIsSubmitting(false)
-      toast.error("Credenciales inválidas o usuario inactivo.")
+      toast.error("No se pudo iniciar sesión", { description: "Revisa el correo, la contraseña y las variables de Supabase en Vercel." })
       return
     }
     toast.success("¡Bienvenido! Sesión iniciada correctamente.")

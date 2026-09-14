@@ -241,8 +241,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let mounted = true
 
     const loadUser = async (userId: string) => {
-      const { data } = await client.from("profiles").select("id, name, email, role, initials, avatar, active").eq("id", userId).single()
+      const { data, error } = await client.from("profiles").select("id, name, email, role, initials, avatar, active").eq("id", userId).single()
       if (!mounted) return
+      if (error) {
+        console.error("Failed loading authenticated profile", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        })
+        setIsLoggedIn(false)
+        setAuthReady(true)
+        return
+      }
       if (data) {
         setCurrentUser(data as User)
         setIsLoggedIn(data.active !== false)
@@ -423,6 +434,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     if (supabase) {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      if (error) {
+        console.error("Supabase login failed", {
+          code: error.code,
+          message: error.message,
+          status: error.status,
+        })
+      }
       return !error
     }
     const account = accountsList.find((item) => item.email.toLowerCase() === email.trim().toLowerCase() && item.password === password.trim() && item.active)
