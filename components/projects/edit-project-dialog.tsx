@@ -33,6 +33,23 @@ export function EditProjectDialog({
   const [capacityKw, setCapacityKw] = React.useState(0)
   const [technicianId, setTechnicianId] = React.useState("")
 
+  const availableTechnicians = React.useMemo(() => {
+    if (!project?.technicianId || technicians.some((technician) => technician.id === project.technicianId)) {
+      return technicians
+    }
+    return [
+      {
+        id: project.technicianId,
+        name: project.technician ?? "Técnico actualmente asignado",
+        email: "",
+        role: "technician" as const,
+        initials: project.technician?.slice(0, 2).toUpperCase() ?? "TE",
+        active: false,
+      },
+      ...technicians,
+    ]
+  }, [project, technicians])
+
   React.useEffect(() => {
     if (project) {
       setStatus(project.status)
@@ -151,10 +168,13 @@ export function EditProjectDialog({
               className="w-full h-10 px-3 rounded-md border bg-card text-sm outline-none focus:ring-2 focus:ring-primary"
               required
             >
-              {technicians.map((technician) => (
+              {availableTechnicians.map((technician) => (
                 <option key={technician.id} value={technician.id}>{technician.name}</option>
               ))}
             </select>
+            {availableTechnicians.length === 0 && (
+              <p className="text-xs text-destructive">No hay técnicos activos. Crea o activa un usuario con rol técnico.</p>
+            )}
           </div>
 
           <DialogFooter className="pt-2">
