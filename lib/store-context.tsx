@@ -454,11 +454,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (supabase) {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (error) {
-        console.error("Supabase login failed", {
-          code: error.code,
-          message: error.message,
-          status: error.status,
-        })
+        console.error("Supabase login failed", `code=${error.code ?? "unknown"}`, `message=${error.message ?? "unknown"}`, `status=${error.status ?? "unknown"}`)
       }
       return !error
     }

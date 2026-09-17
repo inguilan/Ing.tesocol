@@ -34,6 +34,7 @@ import { EditProjectDialog } from "@/components/projects/edit-project-dialog"
 import { PrintRequestModal } from "@/components/material-requests/print-request-modal"
 import { downloadRequestPdf } from "@/lib/pdf-download"
 import { useStore } from "@/lib/store-context"
+import { isProjectAssignedToUser } from "@/lib/utils"
 import type { MaterialRequest, ProjectStatus } from "@/lib/types"
 
 export default function ProjectDetailPage() {
@@ -61,7 +62,7 @@ export default function ProjectDetailPage() {
     )
   }
 
-  if (currentUser.role === "technician" && project.technicianId !== currentUser.id) {
+  if (currentUser.role === "technician" && !isProjectAssignedToUser(project, currentUser)) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6 text-center">
         <ShieldCheck className="size-16 text-muted-foreground opacity-40" />

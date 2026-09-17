@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { ProjectsTable } from "@/components/projects/projects-table"
 import { useStore } from "@/lib/store-context"
+import { isProjectAssignedToUser } from "@/lib/utils"
 
 export default function ProjectsPage() {
   const { projects, currentUser } = useStore()
   const visibleProjects = currentUser.role === "engineer" || currentUser.role === "superadmin"
     ? projects
-    : projects.filter((project) => project.technicianId === currentUser.id)
+    : projects.filter((project) => isProjectAssignedToUser(project, currentUser))
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">

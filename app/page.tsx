@@ -25,11 +25,12 @@ import { QuickActions } from "@/components/dashboard/quick-actions"
 import { RecentProjects } from "@/components/dashboard/recent-projects"
 import { RecentRequests } from "@/components/dashboard/recent-requests"
 import { useStore } from "@/lib/store-context"
+import { isProjectAssignedToUser } from "@/lib/utils"
 
 export default function DashboardPage() {
   const { projects: allProjects, materialRequests: allRequests, siteReports: allReports, activity, currentUser } = useStore()
   const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
-  const projects = canManage ? allProjects : allProjects.filter((project) => project.technicianId === currentUser.id)
+  const projects = canManage ? allProjects : allProjects.filter((project) => isProjectAssignedToUser(project, currentUser))
   const materialRequests = canManage ? allRequests : allRequests.filter((request) => projects.some((project) => project.id === request.projectId || project.name === request.project))
   const siteReports = canManage ? allReports : allReports.filter((report) => projects.some((project) => project.id === report.projectId))
 
