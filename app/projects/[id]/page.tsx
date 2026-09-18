@@ -316,7 +316,7 @@ export default function ProjectDetailPage() {
                       <TableRow key={req.id}>
                         <TableCell className="font-mono font-bold text-primary">{req.reference}</TableCell>
                         <TableCell>{req.requestedBy}</TableCell>
-                        <TableCell className="text-center font-semibold">{req.itemsCount || req.items}</TableCell>
+                        <TableCell className="text-center font-semibold">{req.itemsCount}</TableCell>
                         <TableCell className="text-muted-foreground text-xs">{req.date}</TableCell>
                         <TableCell>
                           <StatusBadge status={req.status} />

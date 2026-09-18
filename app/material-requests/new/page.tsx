@@ -35,11 +35,11 @@ export default function NewMaterialRequestPage() {
 
   const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
   React.useEffect(() => { if (!canManage) router.replace("/projects") }, [canManage, router])
-  if (!canManage) return null
-
   React.useEffect(() => {
     setItems([{ materialName: "", quantity: 1, unit: "piezas", notes: "" }])
   }, [])
+
+  if (!canManage) return null
 
   const handleAddItem = () => {
     setItems((prev) => [...prev, { materialName: "", quantity: 1, unit: "piezas", notes: "" }])
@@ -79,7 +79,7 @@ export default function NewMaterialRequestPage() {
       requestedBy: currentUser.name,
       status: "pending",
       priority,
-      itemsList: validItems,
+      itemsList: validItems.map((item, index) => ({ ...item, id: `item-${index + 1}` })),
       notes,
     })
 

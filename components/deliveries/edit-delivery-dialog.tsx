@@ -33,6 +33,7 @@ export function EditDeliveryDialog({ delivery, projects, open, onOpenChange, onS
   }, [delivery, projects])
 
   if (!delivery) return null
+  const currentDelivery = delivery
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -42,7 +43,7 @@ export function EditDeliveryDialog({ delivery, projects, open, onOpenChange, onS
       toast.error("Completa proyecto, transportista, fecha y una cantidad válida.")
       return
     }
-    onSave(delivery.id, {
+    onSave(currentDelivery.id, {
       projectId: project.id,
       project: project.name,
       carrier: carrier.trim(),
@@ -50,9 +51,9 @@ export function EditDeliveryDialog({ delivery, projects, open, onOpenChange, onS
       items: itemCount,
       status,
       notes: notes.trim() || undefined,
-      receivedDate: status === "delivered" ? (delivery.receivedDate ?? new Date().toISOString().slice(0, 10)) : undefined,
+      receivedDate: status === "delivered" ? (currentDelivery.receivedDate ?? new Date().toISOString().slice(0, 10)) : undefined,
     })
-    toast.success(`Entrega ${delivery.reference} actualizada`)
+    toast.success(`Entrega ${currentDelivery.reference} actualizada`)
     onOpenChange(false)
   }
 

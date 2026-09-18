@@ -25,6 +25,15 @@ export default function NewProjectPage() {
   const [engineer, setEngineer] = React.useState(currentUser.name || "Maya Chen")
   const [technicianId, setTechnicianId] = React.useState(technicians[0]?.id || "")
   const [description, setDescription] = React.useState("")
+  const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
+
+  React.useEffect(() => {
+    if (!technicianId && technicians[0]) setTechnicianId(technicians[0].id)
+  }, [technicianId, technicians])
+
+  React.useEffect(() => {
+    if (!canManage) router.replace("/projects")
+  }, [canManage, router])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,6 +62,8 @@ export default function NewProjectPage() {
 
     router.push(`/projects/${created.id}`)
   }
+
+  if (!canManage) return null
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-4xl mx-auto w-full">

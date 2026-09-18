@@ -35,6 +35,7 @@ export function EditReturnDialog({ record, projects, open, onOpenChange, onSave 
   }, [record, projects])
 
   if (!record) return null
+  const currentRecord = record
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -44,8 +45,8 @@ export function EditReturnDialog({ record, projects, open, onOpenChange, onSave 
       toast.error("Completa obra, motivo, fecha y una cantidad válida.")
       return
     }
-    onSave(record.id, { projectId: project.id, project: project.name, reason: reason.trim(), items: itemCount, date, status, condition, notes: notes.trim() || undefined })
-    toast.success(`Devolución ${record.reference} actualizada`)
+    onSave(currentRecord.id, { projectId: project.id, project: project.name, reason: reason.trim(), items: itemCount, date, status, condition, notes: notes.trim() || undefined })
+    toast.success(`Devolución ${currentRecord.reference} actualizada`)
     onOpenChange(false)
   }
 

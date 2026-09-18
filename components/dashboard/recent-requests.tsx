@@ -73,7 +73,7 @@ export function RecentRequests() {
                   <PriorityBadge priority={req.priority} />
                 </TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">
-                  {req.itemsCount || req.items}
+                  {req.itemsCount}
                 </TableCell>
                 <TableCell className="pr-6 text-right">
                   <StatusBadge status={req.status} />

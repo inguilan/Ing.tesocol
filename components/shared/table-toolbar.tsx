@@ -48,7 +48,7 @@ export function TableToolbar({
             <Select
               key={filter.placeholder}
               value={filter.value}
-              onValueChange={filter.onChange}
+              onValueChange={(value) => value !== null && filter.onChange(value)}
             >
               <SelectTrigger className="h-9 w-full min-w-36 sm:w-auto">
                 <SelectValue placeholder={filter.placeholder} />

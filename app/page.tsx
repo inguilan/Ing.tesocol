@@ -83,12 +83,14 @@ export default function DashboardPage() {
         title="Panel Principal"
         description={`Vista operativa del flujo de materiales (${canManage ? 'Acceso Total' : 'Proyectos Asignados'}).`}
       >
-        <Button
-          variant="outline"
-          render={<Link href="/material-requests/new" />}
-        >
-          Nueva solicitud
-        </Button>
+        {canManage && (
+          <Button
+            variant="outline"
+            render={<Link href="/material-requests/new" />}
+          >
+            Nueva solicitud
+          </Button>
+        )}
         {canManage && (
           <Button render={<Link href="/projects/new" />}>
             <Plus data-icon="inline-start" />

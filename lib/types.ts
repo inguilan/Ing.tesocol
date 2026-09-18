@@ -72,7 +72,7 @@ export interface RequestItem {
 export interface MaterialRequest {
   id: string
   reference: string
-  projectId: string
+  projectId?: string
   project: string
   requestedBy: string
   requestedByRole?: UserRole

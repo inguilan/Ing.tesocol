@@ -100,7 +100,7 @@ export function RequestsTable({ data: propsData }: { data?: MaterialRequest[] })
                     <PriorityBadge priority={req.priority} />
                   </TableCell>
                   <TableCell className="text-center tabular-nums font-semibold">
-                    {req.itemsCount || req.items}
+                    {req.itemsCount}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell text-muted-foreground tabular-nums text-xs">
                     {req.date}
