@@ -97,6 +97,15 @@ interface AppState {
 type BrowserSupabaseClient = NonNullable<typeof supabase>
 
 async function syncOperationalTables(client: BrowserSupabaseClient, state: AppState) {
+  const tableIds = [
+    { table: "projects", ids: state.projects.map((item) => item.id) },
+    { table: "material_requests", ids: state.materialRequests.map((item) => item.id) },
+    { table: "deliveries", ids: state.deliveries.map((item) => item.id) },
+    { table: "returns", ids: state.returns.map((item) => item.id) },
+    { table: "site_reports", ids: state.siteReports.map((item) => item.id) },
+    { table: "activity_events", ids: state.activity.map((item) => item.id) },
+  ] as const
+
   const operations = [
     client.from("projects").upsert(state.projects.map((project) => ({
       legacy_id: project.id,
@@ -117,6 +126,7 @@ async function syncOperationalTables(client: BrowserSupabaseClient, state: AppSt
       legacy_id: request.id,
       reference: request.reference,
       project_name: request.project,
+      project_legacy_id: request.projectId ?? null,
       requested_by_name: request.requestedBy,
       requested_by_role: request.requestedByRole ?? null,
       items_count: request.itemsCount,
@@ -133,6 +143,7 @@ async function syncOperationalTables(client: BrowserSupabaseClient, state: AppSt
       legacy_id: delivery.id,
       reference: delivery.reference,
       project_name: delivery.project,
+      project_legacy_id: delivery.projectId ?? null,
       carrier: delivery.carrier,
       scheduled_date: delivery.scheduledDate,
       items_count: delivery.items,
@@ -146,6 +157,7 @@ async function syncOperationalTables(client: BrowserSupabaseClient, state: AppSt
       legacy_id: record.id,
       reference: record.reference,
       project_name: record.project,
+      project_legacy_id: record.projectId ?? null,
       quantity: record.items,
       items_count: record.items,
       reason: record.reason,
@@ -187,7 +199,24 @@ async function syncOperationalTables(client: BrowserSupabaseClient, state: AppSt
       hint: failed.result.error.hint,
     })
   }
-  return !failed
+  if (failed) return false
+
+  const cleanupResults = await Promise.all(tableIds.map(({ table, ids }) => {
+    const query = client.from(table).delete()
+    return ids.length > 0
+      ? query.not("legacy_id", "in", `(${ids.join(",")})`)
+      : query.not("legacy_id", "is", null)
+  }))
+  const cleanupFailure = cleanupResults.find((result) => result.error)
+  if (cleanupFailure?.error) {
+    console.error("Failed cleaning stale Supabase operational rows", {
+      code: cleanupFailure.error.code,
+      message: cleanupFailure.error.message,
+      details: cleanupFailure.error.details,
+      hint: cleanupFailure.error.hint,
+    })
+  }
+  return !cleanupFailure
 }
 
 const initialAccounts: LocalAccount[] = [
@@ -388,6 +417,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (state.returns) setReturnsList(state.returns)
         if (state.siteReports) setSiteReportsList(state.siteReports)
         if (state.activity) setActivityList(state.activity)
+        const { data: persistedRequests, error: persistedRequestsError } = await client.from("material_requests").select("legacy_id, reference, project_legacy_id, project_name, requested_by_name, requested_by_role, items_count, items, status, priority, request_date, notes").order("request_date", { ascending: false })
+        if (persistedRequestsError) {
+          console.error("Failed loading Supabase material requests", persistedRequestsError)
+        } else if (persistedRequests) {
+          setRequestsList(persistedRequests.map((request) => ({
+            id: request.legacy_id,
+            reference: request.reference ?? request.legacy_id,
+            projectId: request.project_legacy_id ?? undefined,
+            project: request.project_name ?? "",
+            requestedBy: request.requested_by_name ?? "",
+            requestedByRole: request.requested_by_role ?? undefined,
+            itemsCount: request.items_count ?? 0,
+            itemsList: request.items ?? [],
+            status: request.status,
+            priority: request.priority,
+            date: request.request_date,
+            notes: request.notes ?? undefined,
+          })))
+        }
+        const { data: reports, error: reportsError } = await client.from("site_reports").select("legacy_id, project_id, project_name, technician, report_date, materials_left, materials_returned, notes").order("report_date", { ascending: false })
+        if (reportsError) {
+          console.error("Failed loading Supabase site reports", reportsError)
+        } else if (reports) {
+          setSiteReportsList(reports.map((report) => ({
+            id: report.legacy_id,
+            projectId: report.project_id,
+            project: report.project_name,
+            technician: report.technician,
+            date: report.report_date,
+            materialsLeft: report.materials_left ?? "",
+            materialsReturned: report.materials_returned ?? "",
+            notes: report.notes ?? undefined,
+          })))
+        }
       } else {
         const initialState: AppState = {
           projects: projectsList,
@@ -413,7 +476,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     try {
       if (supabase) {
-        if (!isLoggedIn || !appStateHydrated.current) return
+        if (!isLoggedIn || !appStateHydrated.current || (currentUser.role !== "engineer" && currentUser.role !== "superadmin")) return
         const state: AppState = {
           projects: projectsList,
           materialRequests: requestsList,
@@ -422,7 +485,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           siteReports: siteReportsList,
           activity: activityList,
         }
-        void supabase.from("app_state").upsert({ id: "default", state, updated_at: new Date().toISOString() })
+        void supabase.from("app_state").upsert({ id: "default", state, updated_at: new Date().toISOString() }).then(({ error }) => {
+          if (error) console.error("Failed saving Supabase app state", error)
+        })
         void syncOperationalTables(supabase, state)
         return
       }
@@ -565,6 +630,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const deleteProject = (id: string) => {
     setProjectsList(prev => prev.filter(p => p.id !== id))
+    setRequestsList(prev => prev.filter((request) => request.projectId !== id))
+    setDeliveriesList(prev => prev.filter((delivery) => delivery.projectId !== id))
+    setReturnsList(prev => prev.filter((record) => record.projectId !== id))
+    setSiteReportsList(prev => prev.filter((report) => report.projectId !== id))
     if (supabase) void supabase.from("projects").delete().eq("legacy_id", id)
   }
 
@@ -580,6 +649,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       requestedByRole: currentUser.role
     }
     setRequestsList(prev => [newReq, ...prev])
+    if (supabase && currentUser.role === "technician") {
+      void supabase.from("material_requests").insert({
+        legacy_id: newReq.id,
+        reference: newReq.reference,
+        project_legacy_id: newReq.projectId ?? null,
+        project_name: newReq.project,
+        requested_by: currentUser.id,
+        requested_by_name: newReq.requestedBy,
+        requested_by_role: newReq.requestedByRole,
+        items_count: newReq.itemsCount,
+        items: newReq.itemsList ?? [],
+        material_name: newReq.itemsList?.[0]?.materialName ?? newReq.reference,
+        quantity: newReq.itemsList?.reduce((total, item) => total + Number(item.quantity || 0), 0) || newReq.itemsCount,
+        unit: newReq.itemsList?.[0]?.unit ?? "unidad",
+        status: newReq.status,
+        priority: newReq.priority,
+        request_date: newReq.date,
+        notes: newReq.notes ?? null,
+      }).then(({ error }) => {
+        if (error) console.error("Failed saving Supabase material request", error)
+      })
+    }
     setActivityList(prev => [
       {
         id: String(Date.now()),
@@ -710,6 +801,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addSiteReport = (data: Omit<SiteMaterialReport, "id" | "date" | "technician">): SiteMaterialReport => {
     const report = { ...data, id: String(Date.now()), date: new Date().toISOString().slice(0, 10), technician: currentUser.name }
     setSiteReportsList(prev => [report, ...prev])
+    if (supabase) {
+      void supabase.from("site_reports").insert({
+        legacy_id: report.id,
+        project_id: report.projectId,
+        project_name: report.project,
+        technician: report.technician,
+        report_date: report.date,
+        materials_left: report.materialsLeft,
+        materials_returned: report.materialsReturned,
+        notes: report.notes ?? null,
+      }).then(({ error }) => {
+        if (error) console.error("Failed saving Supabase site report", error)
+      })
+    }
     return report
   }
 

@@ -12,11 +12,16 @@ import { useRouter } from "next/navigation"
 import * as React from "react"
 
 export default function MaterialRequestsPage() {
-  const { materialRequests, currentUser } = useStore()
+  const { materialRequests: allRequests, projects: allProjects, currentUser, updateRequestStatus } = useStore()
   const router = useRouter()
   const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
-  React.useEffect(() => { if (!canManage) router.replace("/projects") }, [canManage, router])
-  if (!canManage) return null
+  const projects = currentUser.role === "technician"
+    ? allProjects.filter((project) => project.technicianId === currentUser.id || project.technician?.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+    : allProjects
+  const materialRequests = currentUser.role === "technician"
+    ? allRequests.filter((request) => projects.some((project) => project.id === request.projectId || project.name === request.project) && request.requestedBy === currentUser.name)
+    : allRequests
+  React.useEffect(() => { if (!currentUser) router.replace("/projects") }, [currentUser, router])
 
   const pending = materialRequests.filter((r) => r.status === "pending").length
   const approved = materialRequests.filter(
@@ -35,7 +40,7 @@ export default function MaterialRequestsPage() {
         title="Solicitudes de material"
         description="Solicitudes de materiales requeridos en obras de instalación activas."
       >
-        <Button render={<Link href="/material-requests/new" />}>
+          <Button render={<Link href="/material-requests/new" />}>
           <Plus data-icon="inline-start" />
           Nueva solicitud
         </Button>
@@ -48,7 +53,7 @@ export default function MaterialRequestsPage() {
         <StatsCard label="Rechazadas" value={rejected} icon={XCircle} hint="denegadas" />
       </div>
 
-      <RequestsTable data={materialRequests} />
+      <RequestsTable data={materialRequests} canManage={canManage} onStatusChange={updateRequestStatus} />
     </div>
   )
 }

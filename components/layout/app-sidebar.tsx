@@ -74,7 +74,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Espacio de trabajo</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.filter((item) => currentUser.role === "superadmin" || (currentUser.role === "engineer" && item.href !== "/admin/users") || (currentUser.role === "technician" && (item.href === "/" || item.href === "/projects"))).map((item) => (
+              {navItems.filter((item) => currentUser.role === "superadmin" || (currentUser.role === "engineer" && item.href !== "/admin/users") || (currentUser.role === "technician" && ["/", "/projects", "/material-requests"].includes(item.href))).map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     isActive={isActive(item.href)}

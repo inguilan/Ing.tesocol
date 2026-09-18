@@ -22,7 +22,10 @@ interface ItemInput {
 
 export default function NewMaterialRequestPage() {
   const router = useRouter()
-  const { projects, addMaterialRequest, currentUser } = useStore()
+  const { projects: allProjects, addMaterialRequest, currentUser } = useStore()
+  const projects = currentUser.role === "technician"
+    ? allProjects.filter((project) => project.technicianId === currentUser.id || project.technician?.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+    : allProjects
 
   const [projectId, setProjectId] = React.useState(projects[0]?.id || "")
   const [priority, setPriority] = React.useState<Priority>("medium")
@@ -33,13 +36,13 @@ export default function NewMaterialRequestPage() {
     { materialName: "Inversor Central Trifásico 50kW", quantity: 2, unit: "unidades", notes: "Urgente" },
   ])
 
-  const canManage = currentUser.role === "engineer" || currentUser.role === "superadmin"
-  React.useEffect(() => { if (!canManage) router.replace("/projects") }, [canManage, router])
+  const canCreate = currentUser.role === "engineer" || currentUser.role === "superadmin" || currentUser.role === "technician"
+  React.useEffect(() => { if (!canCreate) router.replace("/projects") }, [canCreate, router])
   React.useEffect(() => {
     setItems([{ materialName: "", quantity: 1, unit: "piezas", notes: "" }])
   }, [])
 
-  if (!canManage) return null
+  if (!canCreate) return null
 
   const handleAddItem = () => {
     setItems((prev) => [...prev, { materialName: "", quantity: 1, unit: "piezas", notes: "" }])

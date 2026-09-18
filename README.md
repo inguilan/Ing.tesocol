@@ -36,6 +36,7 @@ No subas `.env.local` a Git. Ya está incluido en `.gitignore`.
    - `supabase/migrations/20260826141000_app_state.sql`
    - `supabase/migrations/20260826142000_operational_sync.sql`
    - `supabase/migrations/20260909150000_fix_operational_conflict_indexes.sql`
+   - `supabase/migrations/20260918170000_role_based_rls.sql`
 4. En **Authentication > Users**, crea un usuario con email y contraseña.
 5. Convierte ese usuario en administrador ejecutando:
 
@@ -113,6 +114,8 @@ El panel **Usuarios y accesos** ya utiliza una ruta server-only para crear usuar
 
 La migración `20260826142000_operational_sync.sql` agrega un reflejo relacional de esos datos en `projects`, `material_requests`, `deliveries` y `returns`, y crea las tablas `site_reports` y `activity_events`. La fila `app_state` sigue siendo la fuente de compatibilidad que permite a las pantallas actuales cargar el estado completo.
 
+Los técnicos crean solicitudes de materiales y reportes directamente en sus tablas operativas. Los ingenieros y superusuarios mantienen el estado operativo y pueden aprobar, surtir o rechazar solicitudes.
+
 ## Roles
 
 - `superadmin`: acceso al panel de usuarios y a todos los módulos.
@@ -142,6 +145,8 @@ where email = 'admin@tesocol.com';
 ### Error al cargar datos
 
 Comprueba que ejecutaste las migraciones `profiles` y `app_state` y que las políticas RLS están creadas. El usuario debe estar autenticado para leer o escribir el estado operativo.
+
+Antes de producción, ejecuta también `20260918170000_role_based_rls.sql`. Esta migración limita las escrituras operativas según el rol y permite a los técnicos crear únicamente sus solicitudes y reportes.
 
 ### El servidor no arranca
 

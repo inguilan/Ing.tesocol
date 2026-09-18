@@ -21,7 +21,7 @@ import { downloadRequestPdf } from "@/lib/pdf-download"
 import { useStore } from "@/lib/store-context"
 import type { MaterialRequest } from "@/lib/types"
 
-export function RequestsTable({ data: propsData }: { data?: MaterialRequest[] }) {
+export function RequestsTable({ data: propsData, canManage = false, onStatusChange }: { data?: MaterialRequest[]; canManage?: boolean; onStatusChange?: (id: string, status: MaterialRequest["status"]) => void }) {
   const { materialRequests: storeRequests } = useStore()
   const data = propsData || storeRequests
 
@@ -106,7 +106,14 @@ export function RequestsTable({ data: propsData }: { data?: MaterialRequest[] })
                     {req.date}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={req.status} />
+                    {canManage && onStatusChange ? (
+                      <select aria-label={`Estado de ${req.reference}`} value={req.status} onChange={(event) => onStatusChange(req.id, event.target.value as MaterialRequest["status"])} className="h-8 rounded-md border bg-card px-2 text-xs">
+                        <option value="pending">Pendiente</option>
+                        <option value="approved">Aprobada</option>
+                        <option value="fulfilled">Surtida</option>
+                        <option value="rejected">Rechazada</option>
+                      </select>
+                    ) : <StatusBadge status={req.status} />}
                   </TableCell>
                   <TableCell className="pr-6 text-right">
                     <Button
